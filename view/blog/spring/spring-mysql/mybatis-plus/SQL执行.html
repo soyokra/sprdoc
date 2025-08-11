@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,269 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>SQL执行</h1>
+<p>mybatis-plus查询方法有三种</p>
+<p>一种是继承BaseMapper，可以称之为mybatis-plus内置查询</p>
+<p>一种是继承ServiceImpl，这个类的方法是对BaseMapper的增强，底层也是调用BaseMapper的方法，也称之为mybatis-plus内置查询</p>
+<p>一种是mybatis方式，即注解和xml。可以称之为mybatis原生方式</p>
+<p>无论是通过那种方式执行查询，首先会根据@DS注解进行动态数据源切换。</p>
+<p>对于mybatis-plus内置查询，会通过代理的方式用mybatis的SqlSession执行SQL。</p>
+<p>执行的SQL由两部分组成，一个是预生成的MappedStatement，也就是SQL模板。一个是Wrapper对象，也就是动态参数。mybatis-plus生成的SQL模板内的占位符不仅仅有查询参数，还有查询字段，SQL片段这种占位符
+然后通过Wrapper动态生成where条件，查询字段等替换掉SQL模板的占位符，构成完整的SQL。参见<a href="SQL模板注册.md">SQL模板注册</a></p>
+<p>SqlSession使用的DataSource是mybatis-plus注入的DynamicRoutingDataSource。DynamicRoutingDataSource底层使用的数据源可以是Hikari, Druid。。。参见<a href="DataSource.md">DataSource</a>。</p>
+<h2>DynamicDataSourceAutoConfiguration</h2>
+<p>dynamicDatasourceAnnotationAdvisor()方法将DynamicDataSourceAnnotationInterceptor注册为Advisor类型的Bean，DS注解类作为Pointcut</p>
+<pre><code class="language-java">@Slf4j
+@Configuration
+@EnableConfigurationProperties(DynamicDataSourceProperties.class)
+@AutoConfigureBefore(value = DataSourceAutoConfiguration.class, name = &quot;com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceAutoConfigure&quot;)
+@Import(value = {DruidDynamicDataSourceConfiguration.class, DynamicDataSourceCreatorAutoConfiguration.class})
+@ConditionalOnProperty(prefix = DynamicDataSourceProperties.PREFIX, name = &quot;enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
+public class DynamicDataSourceAutoConfiguration implements InitializingBean {
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    @Bean
+    @ConditionalOnProperty(prefix = DynamicDataSourceProperties.PREFIX + &quot;.aop&quot;, name = &quot;enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
+    public Advisor dynamicDatasourceAnnotationAdvisor(DsProcessor dsProcessor) {
+        DynamicDatasourceAopProperties aopProperties = properties.getAop();
+        DynamicDataSourceAnnotationInterceptor interceptor = new DynamicDataSourceAnnotationInterceptor(aopProperties.getAllowedPublicOnly(), dsProcessor);
+        DynamicDataSourceAnnotationAdvisor advisor = new DynamicDataSourceAnnotationAdvisor(interceptor, DS.class);
+        advisor.setOrder(aopProperties.getOrder());
+        return advisor;
+    }
+}
+</code></pre>
+<h2>AbstractAdvisorAutoProxyCreator</h2>
+<p>通过getAdvicesAndAdvisorsForBean为使用了@DS注解的bean创建cglib代理，执行所有方法的时候，都会执行到DynamicDataSourceAnnotationInterceptor</p>
+<pre><code class="language-java">public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
+    @Override
+    @Nullable
+    protected Object[] getAdvicesAndAdvisorsForBean(
+           Class&lt;?&gt; beanClass, String beanName, @Nullable TargetSource targetSource) {
+
+        List&lt;Advisor&gt; advisors = findEligibleAdvisors(beanClass, beanName);
+        if (advisors.isEmpty()) {
+           return DO_NOT_PROXY;
+        }
+        return advisors.toArray();
+    }
+}
+</code></pre>
+<h2>DynamicDataSourceAnnotationInterceptor</h2>
+<ul>
+<li>
+<p>DynamicDataSourceAnnotationInterceptor实现MethodInterceptor接口，MethodInterceptor继承自Interceptor接口，Interceptor继承自Advice接口。因此，DynamicDataSourceAnnotationInterceptor就是AOP的Advice</p>
+</li>
+<li>
+<p>Spring会调用到DynamicDataSourceAnnotationInterceptor的invoke方法，将当前注解的数据源设置到DynamicDataSourceContextHolder类的当前线程，并且这个线程使用的数据结构是栈</p>
+</li>
+</ul>
+<pre><code class="language-java">public class DynamicDataSourceAnnotationInterceptor implements MethodInterceptor {
+    @Override
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        String dsKey = determineDatasourceKey(invocation);
+        DynamicDataSourceContextHolder.push(dsKey);
+        try {
+            return invocation.proceed();
+        } finally {
+            DynamicDataSourceContextHolder.poll();
+        }
+    }
+}
+
+public final class DynamicDataSourceContextHolder {
+    private static final ThreadLocal&lt;Deque&lt;String&gt;&gt; LOOKUP_KEY_HOLDER = new NamedThreadLocal&lt;Deque&lt;String&gt;&gt;(&quot;dynamic-datasource&quot;) {
+        @Override
+        protected Deque&lt;String&gt; initialValue() {
+            return new ArrayDeque&lt;&gt;();
+        }
+    };
+
+    public static String push(String ds) {
+        String dataSourceStr = StringUtils.isEmpty(ds) ? &quot;&quot; : ds;
+        LOOKUP_KEY_HOLDER.get().push(dataSourceStr);
+        return dataSourceStr;
+    }
+
+    public static void poll() {
+        Deque&lt;String&gt; deque = LOOKUP_KEY_HOLDER.get();
+        deque.poll();
+        if (deque.isEmpty()) {
+            LOOKUP_KEY_HOLDER.remove();
+        }
+    }
+}
+</code></pre>
+<h2>TradeProvider</h2>
+<ul>
+<li>TradeProvider 继承了ServiceImpl，ServiceImpl实现了IService接口。</li>
+<li>TradeProvider.list() =&gt; IService.list() =&gt; this.getBaseMapper().selectList(queryWrapper)</li>
+<li>getBaseMapper()返回的mapper就是MapperScan扫描并且注册的MybatisMapperProxy代理</li>
+</ul>
+<pre><code class="language-java">@Service
+public class TradeProvider extends BaseTblProvider&lt;TradeMapper, Trade&gt; implements TradeContract {
+
+}
+
+
+public class ServiceImpl&lt;M extends BaseMapper&lt;T&gt;, T&gt; implements IService&lt;T&gt; {
+    @Autowired
+    protected M baseMapper;
+
+    public M getBaseMapper() {
+        return this.baseMapper;
+    }
+}
+
+public interface IService&lt;T&gt; {
+    default List&lt;T&gt; list(Wrapper&lt;T&gt; queryWrapper) {
+        return this.getBaseMapper().selectList(queryWrapper);
+    }
+
+    default List&lt;T&gt; list() {
+        return this.list(Wrappers.emptyWrapper());
+    }
+}
+</code></pre>
+<h2>MybatisMapperProxy</h2>
+<p>MybatisMapperProxy 的 invoke调用的是MybatisMapperMethod的execute方法，</p>
+<pre><code class="language-java">public class MybatisMapperProxy&lt;T&gt; implements InvocationHandler, Serializable {
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        try {
+            if (Object.class.equals(method.getDeclaringClass())) {
+                return method.invoke(this, args);
+            } else {
+                return cachedInvoker(method).invoke(proxy, method, args, sqlSession);
+            }
+        } catch (Throwable t) {
+            throw ExceptionUtil.unwrapThrowable(t);
+        }
+    }
+
+    private static class PlainMethodInvoker implements MapperMethodInvoker {
+        private final MybatisMapperMethod mapperMethod;
+
+        public PlainMethodInvoker(MybatisMapperMethod mapperMethod) {
+            super();
+            this.mapperMethod = mapperMethod;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args, SqlSession sqlSession) throws Throwable {
+            return mapperMethod.execute(sqlSession, args);
+        }
+    }
+}
+</code></pre>
+<h2>MybatisMapperMethod</h2>
+<p>MybatisMapperMethod的execute()最终调用的是mybatis的sqlSession.select()，这个SqlSession就是之前Datasource适配注册的SqlTemplate</p>
+<pre><code class="language-java">public class MybatisMapperMethod {
+    public Object execute(SqlSession sqlSession, Object[] args) {
+        Object result;
+        switch (command.getType()) {
+            case INSERT: {
+                Object param = method.convertArgsToSqlCommandParam(args);
+                result = rowCountResult(sqlSession.insert(command.getName(), param));
+                break;
+            }
+            case UPDATE: {
+                Object param = method.convertArgsToSqlCommandParam(args);
+                result = rowCountResult(sqlSession.update(command.getName(), param));
+                break;
+            }
+            case DELETE: {
+                Object param = method.convertArgsToSqlCommandParam(args);
+                result = rowCountResult(sqlSession.delete(command.getName(), param));
+                break;
+            }
+            case SELECT:
+                if (method.returnsVoid() &amp;&amp; method.hasResultHandler()) {
+                    executeWithResultHandler(sqlSession, args);
+                    result = null;
+                } else if (method.returnsMany()) {
+                    result = executeForMany(sqlSession, args);
+                } else if (method.returnsMap()) {
+                    result = executeForMap(sqlSession, args);
+                } else if (method.returnsCursor()) {
+                    result = executeForCursor(sqlSession, args);
+                } else {
+                    // TODO 这里下面改了
+                    if (IPage.class.isAssignableFrom(method.getReturnType())) {
+                        result = executeForIPage(sqlSession, args);
+                        // TODO 这里上面改了
+                    } else {
+                        Object param = method.convertArgsToSqlCommandParam(args);
+                        result = sqlSession.selectOne(command.getName(), param);
+                        if (method.returnsOptional()
+                                &amp;&amp; (result == null || !method.getReturnType().equals(result.getClass()))) {
+                            result = Optional.ofNullable(result);
+                        }
+                    }
+                }
+                break;
+            case FLUSH:
+                result = sqlSession.flushStatements();
+                break;
+            default:
+                throw new BindingException(&quot;Unknown execution method for: &quot; + command.getName());
+        }
+        if (result == null &amp;&amp; method.getReturnType().isPrimitive() &amp;&amp; !method.returnsVoid()) {
+            throw new BindingException(&quot;Mapper method '&quot; + command.getName()
+                    + &quot; attempted to return null from a method with a primitive return type (&quot; + method.getReturnType() + &quot;).&quot;);
+        }
+        return result;
+    }
+}   
+</code></pre>
+<h2>ibatis执行</h2>
+<p>通过ASTProperty类和反射的方式执行到mybatis-plus的AbstractWrapper方法</p>
+<pre><code class="language-java">public class ASTProperty extends SimpleNode implements NodeType {
+    protected Object getValueBody(OgnlContext context, Object source) throws OgnlException {
+        Object property = this.getProperty(context, source);
+        Object result = OgnlRuntime.getProperty(context, source, property);
+        if (result == null) {
+            result = OgnlRuntime.getNullHandler(OgnlRuntime.getTargetClass(source)).nullPropertyValue(context, source, property);
+        }
+
+        return result;
+    }
+}
+
+public abstract class AbstractWrapper&lt;T, R, Children extends AbstractWrapper&lt;T, R, Children&gt;&gt; extends Wrapper&lt;T&gt;
+        implements Compare&lt;Children, R&gt;, Nested&lt;Children, Children&gt;, Join&lt;Children&gt;, Func&lt;Children, R&gt; {
+    @Override
+    public MergeSegments getExpression() {
+        return expression;
+    }
+
+    public Map&lt;String, Object&gt; getParamNameValuePairs() {
+        return paramNameValuePairs;
+    }
+}
+</code></pre>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

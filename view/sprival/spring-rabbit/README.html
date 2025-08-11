@@ -851,7 +851,113 @@
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h2>监控指标</h2>
+<pre><code class="language-text">rabbitmq_acknowledged_published_total
+rabbitmq_acknowledged_total
+rabbitmq_channels
+rabbitmq_connections
+rabbitmq_consumed_total
+rabbitmq_failed_to_publish_total
+rabbitmq_not_acknowledged_published_total
+rabbitmq_published_total
+rabbitmq_unrouted_published_total
+rabbitmq_rejected_total
+</code></pre>
+<p>| 指标名称                                      | 类型    | 含义                        |
+| ----------------------------------------- | ----- | ------------------------- |
+| rabbitmq_published_total                  | count | 发布到 RabbitMQ 的消息总数        |
+| rabbitmq_acknowledged_published_total     | count | 已成功被 Broker 接收并确认的消息总数    |
+| rabbitmq_not_acknowledged_published_total | count | 未收到 Broker 确认的消息总数        |
+| rabbitmq_failed_to_publish_total          | count | 发布失败的消息总数                 |
+| rabbitmq_unrouted_published_total         | count | 已发布但因没有匹配队列而被丢弃的消息总数      |
+| rabbitmq_consumed_total                   | count | 消费者从队列中获取的消息总数            |
+| rabbitmq_acknowledged_total               | count | 消费者已确认（ACK）的消息总数          |
+| rabbitmq_rejected_total                   | count | 消费者拒绝（NACK）的消息总数          |
+| rabbitmq_connections                      | gauge | 当前与 RabbitMQ 建立的 TCP 连接总数 |
+| rabbitmq_channels                         | gauge | 过高的连接数可能导致 Broker 资源耗尽    |</p>
+<p>消息流： published_total → acknowledged_published_total → consumed_total → acknowledged_total</p>
+<h4>PromQL</h4>
+<p>连接池配置指标</p>
+<pre><code class="language-PromQL"># 连接总数
+sum(rabbitmq_connections) by (job)
+
+# 信道总数
+sum(rabbitmq_connections) by (job)
+</code></pre>
+<p>消息发布指标</p>
+<pre><code class="language-PromQL"># 发布成功率
+avg((rabbitmq_acknowledged_published_total / rabbitmq_published_total) * 100) by (job)
+</code></pre>
+<p>消息消费指标</p>
+<pre><code class="language-PromQL">avg((rabbitmq_rejected_total  / rabbitmq_consumed_total) * 100) by (job)
+</code></pre>
+<h2>源码分析</h2>
+<ul>
+<li>org.springframework.amqp：amqp接口定义和公共支持类</li>
+<li>org.springframework.amqp.rabbit: rabbit实现包</li>
+<li>org.springframework.boot.actuate.amqp：rabbit健康检查</li>
+<li>org.springframework.boot.actuate.metrics.amqp：rabbit指标监控</li>
+<li>org.springframework.boot.actuate.autoconfigure.amqp：rabbitmq健康检查自动装配</li>
+<li>org.springframework.boot.autoconfigure.amqp：rabbit自动装配</li>
+</ul>
+<p>rabbit自动装配通过spring.factories加载</p>
+<pre><code class="language-text">org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+</code></pre>
+<h2>监控指标</h2>
+<h4>健康检查</h4>
+<p>健康检查是通过使用rabbitTemplate尝试获取版本实现的</p>
+<pre><code class="language-java">public class RabbitHealthIndicator extends AbstractHealthIndicator {
+
+    private final RabbitTemplate rabbitTemplate;
+
+    public RabbitHealthIndicator(RabbitTemplate rabbitTemplate) {
+        super(&quot;Rabbit health check failed&quot;);
+        Assert.notNull(rabbitTemplate, &quot;RabbitTemplate must not be null&quot;);
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    @Override
+    protected void doHealthCheck(Health.Builder builder) throws Exception {
+        builder.up().withDetail(&quot;version&quot;, getVersion());
+    }
+
+    private String getVersion() {
+        return this.rabbitTemplate
+                .execute((channel) -&gt; channel.getConnection().getServerProperties().get(&quot;version&quot;).toString());
+    }
+
+}
+</code></pre>
+<h4>指标监控</h4>
+<pre><code class="language-java">public class RabbitMetrics implements MeterBinder {
+
+    private final Iterable&lt;Tag&gt; tags;
+
+    private final ConnectionFactory connectionFactory;
+
+    /**
+     * Create a new meter binder recording the specified {@link ConnectionFactory}.
+     * @param connectionFactory the {@link ConnectionFactory} to instrument
+     * @param tags tags to apply to all recorded metrics
+     */
+    public RabbitMetrics(ConnectionFactory connectionFactory, Iterable&lt;Tag&gt; tags) {
+        Assert.notNull(connectionFactory, &quot;ConnectionFactory must not be null&quot;);
+        this.connectionFactory = connectionFactory;
+        this.tags = (tags != null) ? tags : Collections.emptyList();
+    }
+
+    @Override
+    public void bindTo(MeterRegistry registry) {
+        this.connectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry, &quot;rabbitmq&quot;, this.tags));
+    }
+
+}
+</code></pre>
+<pre><code class="language-text">MetricsCollector =&gt; AbstractMetricsCollector
+                                    =&gt; MicrometerMetricsCollector
+                                    =&gt; NoOpMetricsCollector
+                                    =&gt; StandardMetricsCollector
+</code></pre>
         </article>
     </div>
 </main>

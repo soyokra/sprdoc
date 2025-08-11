@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,54 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <ul>
+<li>RootBeanDefinition</li>
+<li>AbstractBeanDefinition<ul>
+<li>BeanMetadataAttributeAccessor</li>
+<li>BeanDefinition</li>
+<li>AttributeAccessor</li>
+<li>BeanMetadataElement</li>
+</ul>
+</li>
+<li>AnnotatedGenericBeanDefinition</li>
+<li>GenericBeanDefinition<ul>
+<li>AbstractBeanDefinition</li>
+</ul>
+</li>
+<li>AnnotatedBeanDefinition<ul>
+<li>BeanDefinition</li>
+</ul>
+</li>
+<li>ChildBeanDefinition</li>
+<li>AbstractBeanDefinition</li>
+<li>ScannedGenericBeanDefinition</li>
+<li>GenericBeanDefinition</li>
+<li>AnnotatedBeanDefinition</li>
+</ul>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

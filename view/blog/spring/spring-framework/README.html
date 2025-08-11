@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,78 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h2>简述</h2>
+<p>IOC
+  - 容器
+  - bean的生命周期
+  - 循环依赖
+AOP</p>
+<h2>目录</h2>
+<h2>源码分析目录</h2>
+<ul>
+<li><a href="src/Application.run.md">Application.run</a></li>
+<li><a href="src/Application.createApplicationContext.md">Application.createApplicationContext</a></li>
+<li>
+<p><a href="src/Application.refreshContext.md">Application.refreshContext</a></p>
+<ul>
+<li><a href="src/AbstractApplicationContext.prepareRefresh.md">AbstractApplicationContext.prepareRefresh</a></li>
+<li><a href="src/AbstractApplicationContext.obtainFreshBeanFactory.md">AbstractApplicationContext.obtainFreshBeanFactory</a></li>
+<li><a href="src/AbstractApplicationContext.prepareBeanFactory.md">AbstractApplicationContext.prepareBeanFactory</a></li>
+<li><a href="src/AbstractApplicationContext.postProcessBeanFactory.md">AbstractApplicationContext.postProcessBeanFactory</a></li>
+<li><a href="src/AbstractApplicationContext.invokeBeanFactoryPostProcessors.md">AbstractApplicationContext.invokeBeanFactoryPostProcessors</a></li>
+<li><a href="src/ConfigurationClassPostProcessor.processConfigBeanDefinitions.md">ConfigurationClassPostProcessor.processConfigBeanDefinitions</a><ul>
+<li><a href="src/ConfigurationClassParser.parse.md">ConfigurationClassParser.parse</a></li>
+<li><a href="src/AutoConfigurationImportSelector.getAutoConfigurationEntry.md">AutoConfigurationImportSelector.getAutoConfigurationEntry</a></li>
+</ul>
+</li>
+<li><a href="src/MapperScannerConfigurer.postProcessBeanDefinitionRegistry.md">MapperScannerConfigurer.postProcessBeanDefinitionRegistry</a><ul>
+<li><a href="src/ClassPathMapperScanner.scan.md">ClassPathMapperScanner.scan</a></li>
+</ul>
+</li>
+<li><a href="src/AbstractApplicationContext.registerBeanPostProcessors.md">AbstractApplicationContext.registerBeanPostProcessors</a></li>
+<li><a href="src/AbstractApplicationContext.initMessageSource.md">AbstractApplicationContext.initMessageSource</a></li>
+<li><a href="src/AbstractApplicationContext.initApplicationEventMulticaster.md">AbstractApplicationContext.initApplicationEventMulticaster</a></li>
+<li><a href="src/AbstractApplicationContext.onRefresh.md">AbstractApplicationContext.onRefresh</a></li>
+<li><a href="src/AbstractApplicationContext.registerListeners.md">AbstractApplicationContext.registerListeners</a></li>
+<li><a href="src/AbstractApplicationContext.finishBeanFactoryInitialization.md">AbstractApplicationContext.finishBeanFactoryInitialization</a></li>
+<li><a href="src/AbstractApplicationContext.finishRefresh.md">AbstractApplicationContext.finishRefresh</a></li>
+<li><a href="src/AbstractApplicationContext.destroyBeans.md">AbstractApplicationContext.destroyBeans</a></li>
+<li><a href="src/AbstractApplicationContext.cancelRefresh.md">AbstractApplicationContext.cancelRefresh</a></li>
+<li><a href="src/AbstractApplicationContext.resetCommonCaches.md">AbstractApplicationContext.resetCommonCaches</a></li>
+</ul>
+</li>
+<li>
+<p>总的流程图</p>
+</li>
+<li>注册BeanDefinition流程图</li>
+<li>注册Bean流程图</li>
+<li>本地话消息流程图</li>
+<li>事件监听，注册，广播流程图</li>
+</ul>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

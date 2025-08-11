@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,253 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>SQL模板注册</h1>
+<p>SQL模板注册，就是创建和添加MappedStatement</p>
+<p>mybatis-plus会复用mybatis，将xxxMapper.xml文件定义的sql模板解析成MappedStatement。因此在xxxMapper.xml定义sql用法和mybatis一样</p>
+<p>同时，mybatis-plus会执行自己的的方法，将预定义的selectList,insert,update,delete等方法，通过生成mybatis脚本的方式转成MappedStatement。 </p>
+<p>mybatis-plus的Wrapper是mybatis的实体，mybatis会反射解析属性，对脚本动态内容进行判断和替换</p>
+<p>脚本代码会转成sqlNode对象，脚本动态内容进行判断和替换的过程是转成sqlNode后执行的</p>
+<pre><code class="language-xml">&lt;script&gt;
+    &lt;if test=&quot;ew != null and ew.sqlFirst != null&quot;&gt;
+        ${ew.sqlFirst}
+    &lt;/if&gt; 
+
+    SELECT 
+
+    &lt;choose&gt;
+        &lt;when test=&quot;ew != null and ew.sqlSelect != null&quot;&gt;
+            ${ew.sqlSelect}
+        &lt;/when&gt;
+        &lt;otherwise&gt;
+            trade_id,created_at,updated_at
+        &lt;/otherwise&gt;
+    &lt;/choose&gt; 
+
+    FROM trade 
+
+    &lt;if test=&quot;ew != null&quot;&gt;
+        &lt;where&gt;
+            &lt;if test=&quot;ew.entity != null&quot;&gt;
+                &lt;if test=&quot;ew.entity['tradeId'] != null&quot;&gt; 
+                    AND trade_id=#{ew.entity.tradeId}
+                &lt;/if&gt;
+                &lt;if test=&quot;ew.entity['createdAt'] != null&quot;&gt; 
+                    AND created_at=#{ew.entity.createdAt}
+                &lt;/if&gt;
+                &lt;if test=&quot;ew.entity['updatedAt'] != null&quot;&gt; 
+                    AND updated_at=#{ew.entity.updatedAt}
+                &lt;/if&gt;
+            &lt;/if&gt;
+
+            &lt;if test=&quot;ew.sqlSegment != null and ew.sqlSegment != '' and ew.nonEmptyOfWhere&quot;&gt;
+                &lt;if test=&quot;ew.nonEmptyOfEntity and ew.nonEmptyOfNormal&quot;&gt; 
+                    AND
+                &lt;/if&gt; 
+                ${ew.sqlSegment}
+            &lt;/if&gt;
+        &lt;/where&gt;
+
+        &lt;if test=&quot;ew.sqlSegment != null and ew.sqlSegment != '' and ew.emptyOfWhere&quot;&gt;
+            ${ew.sqlSegment}
+        &lt;/if&gt;
+    &lt;/if&gt;  
+
+    &lt;if test=&quot;ew != null and ew.sqlComment != null&quot;&gt;
+        ${ew.sqlComment}
+    &lt;/if&gt;
+&lt;/script&gt;
+</code></pre>
+<h2>MybatisPlusAutoConfiguration</h2>
+<p>MybatisPlusAutoConfiguration的sqlSessionFactory()方法注册SqlSessionFactory类型的bean。是由MybatisSqlSessionFactoryBean进行处理的</p>
+<pre><code class="language-java">public class MybatisPlusAutoConfiguration implements InitializingBean {
+    @Bean
+    @ConditionalOnMissingBean
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+        MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
+        return factory.getObject();
+    }
+}
+</code></pre>
+<h2>MybatisSqlSessionFactoryBean</h2>
+<p>MybatisSqlSessionFactoryBean 实际上构建sqlSessionFactory是通过afterPropertiesSet方法</p>
+<pre><code class="language-java">public class MybatisSqlSessionFactoryBean implements FactoryBean&lt;SqlSessionFactory&gt;, InitializingBean, ApplicationListener&lt;ApplicationEvent&gt; {
+    public SqlSessionFactory getObject() throws Exception {
+        if (this.sqlSessionFactory == null) {
+            this.afterPropertiesSet();
+        }
+
+        return this.sqlSessionFactory;
+    }
+
+    public void afterPropertiesSet() throws Exception {
+        Assert.notNull(this.dataSource, &quot;Property 'dataSource' is required&quot;);
+        Assert.state(this.configuration == null &amp;&amp; this.configLocation == null || this.configuration == null || this.configLocation == null, &quot;Property 'configuration' and 'configLocation' can not specified with together&quot;);
+        SqlRunner.DEFAULT.close();
+        this.sqlSessionFactory = this.buildSqlSessionFactory();
+    }
+
+    protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
+        // xml文件解析
+        XMLMapperBuilder xmlMapperBuilder = new XMLMapperBuilder(mapperLocation.getInputStream(), (Configuration)targetConfiguration, mapperLocation.toString(), ((Configuration)targetConfiguration).getSqlFragments());
+        xmlMapperBuilder.parse();
+
+        //
+    }
+
+
+}
+</code></pre>
+<h2>XMLMapperBuilder</h2>
+<p>XMLMapperBuilder解析TradeMapper.xml，并将文件内的sql模板语句注册成MappedStatement</p>
+<pre><code class="language-java">public class XMLMapperBuilder extends BaseBuilder {
+    public void parse() {
+        if (!configuration.isResourceLoaded(resource)) {
+            configurationElement(parser.evalNode(&quot;/mapper&quot;));
+            configuration.addLoadedResource(resource);
+            bindMapperForNamespace();
+        }
+    }
+
+    private void configurationElement(XNode context) {
+        try {
+            buildStatementFromContext(context.evalNodes(&quot;select|insert|update|delete&quot;));
+        } catch (Exception e) {
+            throw new BuilderException(&quot;Error parsing Mapper XML. The XML location is '&quot; + resource + &quot;'. Cause: &quot; + e, e);
+        }
+    }
+
+    private void buildStatementFromContext(List&lt;XNode&gt; list, String requiredDatabaseId) {
+        for (XNode context : list) {
+            final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
+            try {
+                statementParser.parseStatementNode();
+            } catch (IncompleteElementException e) {
+                configuration.addIncompleteStatement(statementParser);
+            }
+        }
+    }
+
+    public void parseStatementNode() {
+        builderAssistant.addMappedStatement(id, sqlSource, statementType, sqlCommandType,
+                fetchSize, timeout, parameterMap, parameterTypeClass, resultMap, resultTypeClass,
+                resultSetTypeEnum, flushCache, useCache, resultOrdered,
+                keyGenerator, keyProperty, keyColumn, databaseId, langDriver, resultSets);
+    }
+}
+</code></pre>
+<h2>MybatisConfiguration</h2>
+<p>XMLMapperBuilder 通过configuration，转到了MybatisConfiguration.addMapper() 方法</p>
+<pre><code class="language-java">public class XMLMapperBuilder extends BaseBuilder {
+    private void bindMapperForNamespace() {
+        configuration.addMapper(boundType);
+    }
+}
+
+public class MybatisConfiguration extends Configuration {
+    @Override
+    public &lt;T&gt; void addMapper(Class&lt;T&gt; type) {
+        mybatisMapperRegistry.addMapper(type);
+    }
+}
+</code></pre>
+<h2>MybatisMapperRegistry</h2>
+<pre><code class="language-java">public class MybatisMapperRegistry extends MapperRegistry {
+    @Override
+    public &lt;T&gt; void addMapper(Class&lt;T&gt; type) {
+        if (type.isInterface()) {
+            boolean loadCompleted = false;
+            try {
+                // TODO 这里也换成 MybatisMapperProxyFactory 而不是 MapperProxyFactory
+                knownMappers.put(type, new MybatisMapperProxyFactory&lt;&gt;(type));
+                // TODO 这里也换成 MybatisMapperAnnotationBuilder 而不是 MapperAnnotationBuilder
+                MybatisMapperAnnotationBuilder parser = new MybatisMapperAnnotationBuilder(config, type);
+                parser.parse();
+                loadCompleted = true;
+            } finally {
+                if (!loadCompleted) {
+                    knownMappers.remove(type);
+                }
+            }
+        }
+    }
+}
+</code></pre>
+<h2>MybatisMapperAnnotationBuilder</h2>
+<pre><code class="language-java">public class MybatisMapperAnnotationBuilder extends MapperAnnotationBuilder {
+    @Override
+    public void parse() {
+        String resource = type.toString();
+        if (!configuration.isResourceLoaded(resource)) {
+            try {
+                // https://github.com/baomidou/mybatis-plus/issues/3038
+                if (GlobalConfigUtils.isSupperMapperChildren(configuration, type)) {
+                    parserInjector();
+                }
+            } catch (IncompleteElementException e) {
+                configuration.addIncompleteMethod(new InjectorResolver(this));
+            }
+        }
+        parsePendingMethods();
+    }
+
+    void parserInjector() {
+        GlobalConfigUtils.getSqlInjector(configuration).inspectInject(assistant, type);
+    }
+
+}
+</code></pre>
+<h2>AbstractSqlInjector</h2>
+<pre><code class="language-java">public abstract class AbstractSqlInjector implements ISqlInjector {
+    @Override
+    public void inspectInject(MapperBuilderAssistant builderAssistant, Class&lt;?&gt; mapperClass) {
+        // 循环注入自定义方法
+        methodList.forEach(m -&gt; m.inject(builderAssistant, mapperClass, modelClass, tableInfo));
+    }
+}
+</code></pre>
+<h2>AbstractMethod</h2>
+<pre><code class="language-java">public abstract class AbstractMethod implements Constants {
+    public void inject(MapperBuilderAssistant builderAssistant, Class&lt;?&gt; mapperClass, Class&lt;?&gt; modelClass, TableInfo tableInfo) {
+        injectMappedStatement(mapperClass, modelClass, tableInfo);
+    }
+}
+</code></pre>
+<h2>SelectList</h2>
+<pre><code class="language-java">public class SelectList extends AbstractMethod {
+    @Override
+    public MappedStatement injectMappedStatement(Class&lt;?&gt; mapperClass, Class&lt;?&gt; modelClass, TableInfo tableInfo) {
+        SqlMethod sqlMethod = SqlMethod.SELECT_LIST;
+        String sql = String.format(sqlMethod.getSql(), sqlFirst(), sqlSelectColumns(tableInfo, true), tableInfo.getTableName(),
+                sqlWhereEntityWrapper(true, tableInfo), sqlOrderBy(tableInfo), sqlComment());
+        SqlSource sqlSource = languageDriver.createSqlSource(configuration, sql, modelClass);
+        return this.addSelectMappedStatementForTable(mapperClass, getMethod(sqlMethod), sqlSource, tableInfo);
+    }
+}
+</code></pre>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

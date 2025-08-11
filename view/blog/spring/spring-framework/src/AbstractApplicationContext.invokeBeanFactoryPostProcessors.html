@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,275 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h2>简述</h2>
+<p>// 先注册BeanDefinition
+执行BeanDefinitionRegistryPostProcessor.postProcessBeanDefinitionRegistry</p>
+<p>// 
+执行BeanFactoryPostProcessor.postProcessBeanFactory</p>
+<h2>源码分析</h2>
+<pre><code class="language-java">final class PostProcessorRegistrationDelegate {
+
+
+    public static void invokeBeanFactoryPostProcessors(
+          ConfigurableListableBeanFactory beanFactory, List&lt;BeanFactoryPostProcessor&gt; beanFactoryPostProcessors) {
+
+       // Invoke BeanDefinitionRegistryPostProcessors first, if any.
+       Set&lt;String&gt; processedBeans = new HashSet&lt;&gt;();
+
+       if (beanFactory instanceof BeanDefinitionRegistry) {
+
+           // 第一步：先执行外部传入的 beanFactory后置处理器BeanDefinitionRegistryPostProcessor的postProcessBeanDefinitionRegistry方法
+          BeanDefinitionRegistry registry = (BeanDefinitionRegistry) beanFactory;
+          List&lt;BeanFactoryPostProcessor&gt; regularPostProcessors = new ArrayList&lt;&gt;();
+          List&lt;BeanDefinitionRegistryPostProcessor&gt; registryProcessors = new ArrayList&lt;&gt;();
+
+          for (BeanFactoryPostProcessor postProcessor : beanFactoryPostProcessors) {
+             if (postProcessor instanceof BeanDefinitionRegistryPostProcessor) {
+                BeanDefinitionRegistryPostProcessor registryProcessor =
+                      (BeanDefinitionRegistryPostProcessor) postProcessor;
+
+                registryProcessor.postProcessBeanDefinitionRegistry(registry);
+                registryProcessors.add(registryProcessor);
+             }
+             else {
+                regularPostProcessors.add(postProcessor);
+             }
+          }
+
+          // Do not initialize FactoryBeans here: We need to leave all regular beans
+          // uninitialized to let the bean factory post-processors apply to them!
+          // Separate between BeanDefinitionRegistryPostProcessors that implement
+          // PriorityOrdered, Ordered, and the rest.
+          List&lt;BeanDefinitionRegistryPostProcessor&gt; currentRegistryProcessors = new ArrayList&lt;&gt;();
+
+          // 第二步：执行继承PriorityOrdered接口的beanFactory后置处理器BeanDefinitionRegistryPostProcessor的postProcessBeanDefinitionRegistry方法
+          // 其实就是执行优先级高的，实际上是ConfigurationClassPostProcessor这个处理
+          // ConfigurationClassPostProcessor就是注解类的解析，生成和注册BeanDefinition
+          // 早期是xml方式，对于新增的注解方式，解决方案是增加 BeanDefinitionRegistryPostProcessor 这个扩展点
+          String[] postProcessorNames =
+                beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+          for (String ppName : postProcessorNames) {
+             if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+                currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+                processedBeans.add(ppName);
+             }
+          }
+          sortPostProcessors(currentRegistryProcessors, beanFactory);
+          registryProcessors.addAll(currentRegistryProcessors);
+
+          // currentRegistryProcessors =&gt; ConfigurationClassPostProcessor
+          invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+
+          currentRegistryProcessors.clear();
+
+          // 第三步：执行继承Ordered接口的beanFactory后置处理器BeanDefinitionRegistryPostProcessor的postProcessBeanDefinitionRegistry方法
+          // 按顺序执行，默认情况下，并没有这种后置处理器
+          postProcessorNames = beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+          for (String ppName : postProcessorNames) {
+             if (!processedBeans.contains(ppName) &amp;&amp; beanFactory.isTypeMatch(ppName, Ordered.class)) {
+                currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+                processedBeans.add(ppName);
+             }
+          }
+          sortPostProcessors(currentRegistryProcessors, beanFactory);
+          registryProcessors.addAll(currentRegistryProcessors);
+
+           // currentRegistryProcessors =&gt; empty
+          invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+          currentRegistryProcessors.clear();
+
+          // 第四步：执行所有的beanFactory后置处理器BeanDefinitionRegistryPostProcessor的postProcessBeanDefinitionRegistry方法
+          // 这里的while循环是考虑到postProcessBeanDefinitionRegistry方法里可能产生新的beanFactory后置处理器，要全部执行到
+          // 使用mybatis的话，就会有MapperScannerConfigurer，扫描xxxMapper为BeanDefinition 
+          boolean reiterate = true;
+          while (reiterate) {
+             reiterate = false;
+             postProcessorNames = beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+             for (String ppName : postProcessorNames) {
+                if (!processedBeans.contains(ppName)) {
+                   currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+                   processedBeans.add(ppName);
+                   reiterate = true;
+                }
+             }
+             sortPostProcessors(currentRegistryProcessors, beanFactory);
+             registryProcessors.addAll(currentRegistryProcessors);
+
+             // currentRegistryProcessors =&gt; MapperScannerConfigurer
+             invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+             currentRegistryProcessors.clear();
+          }
+
+          // BeanDefinitionRegistryPostProcessor继承BeanFactoryPostProcessor接口
+           // 这里是执行一下BeanDefinitionRegistryPostProcessor类型后置处理的postProcessBeanFactory方法
+           //registryProcessors =&gt; 
+           // CachingMetadataReaderFactoryPostProcessor
+           // ConfigurationWarningsPostProcessor
+           // ConfigurationClassPostProcessor
+           // MapperScannerConfigurer
+          invokeBeanFactoryPostProcessors(registryProcessors, beanFactory);
+
+          // regularPostProcessors =&gt;
+           //PropertySourceOrderingPostProcessor
+          invokeBeanFactoryPostProcessors(regularPostProcessors, beanFactory);
+       }
+
+       else {
+          // Invoke factory processors registered with the context instance.
+          invokeBeanFactoryPostProcessors(beanFactoryPostProcessors, beanFactory);
+       }
+
+       // 按照 PriorityOrdered -&gt; Ordered -&gt; 普通的顺序执行beanFactory后置处理器BeanFactoryPostProcessor的postProcessBeanFactory方法
+       // Do not initialize FactoryBeans here: We need to leave all regular beans
+       // uninitialized to let the bean factory post-processors apply to them!
+       String[] postProcessorNames =
+             beanFactory.getBeanNamesForType(BeanFactoryPostProcessor.class, true, false);
+
+       // Separate between BeanFactoryPostProcessors that implement PriorityOrdered,
+       // Ordered, and the rest.
+       List&lt;BeanFactoryPostProcessor&gt; priorityOrderedPostProcessors = new ArrayList&lt;&gt;();
+       List&lt;String&gt; orderedPostProcessorNames = new ArrayList&lt;&gt;();
+       List&lt;String&gt; nonOrderedPostProcessorNames = new ArrayList&lt;&gt;();
+       for (String ppName : postProcessorNames) {
+          if (processedBeans.contains(ppName)) {
+             // skip - already processed in first phase above
+          }
+          else if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+             priorityOrderedPostProcessors.add(beanFactory.getBean(ppName, BeanFactoryPostProcessor.class));
+          }
+          else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+             orderedPostProcessorNames.add(ppName);
+          }
+          else {
+             nonOrderedPostProcessorNames.add(ppName);
+          }
+       }
+
+       // First, invoke the BeanFactoryPostProcessors that implement PriorityOrdered.
+       sortPostProcessors(priorityOrderedPostProcessors, beanFactory);
+
+       // priorityOrderedPostProcessors =&gt;
+        // PropertySourcesPlaceholderConfigurer
+       invokeBeanFactoryPostProcessors(priorityOrderedPostProcessors, beanFactory);
+
+       // Next, invoke the BeanFactoryPostProcessors that implement Ordered.
+       List&lt;BeanFactoryPostProcessor&gt; orderedPostProcessors = new ArrayList&lt;&gt;(orderedPostProcessorNames.size());
+       for (String postProcessorName : orderedPostProcessorNames) {
+          orderedPostProcessors.add(beanFactory.getBean(postProcessorName, BeanFactoryPostProcessor.class));
+       }
+       sortPostProcessors(orderedPostProcessors, beanFactory);
+
+       // orderedPostProcessors =&gt; empty
+       invokeBeanFactoryPostProcessors(orderedPostProcessors, beanFactory);
+
+       // Finally, invoke all other BeanFactoryPostProcessors.
+       List&lt;BeanFactoryPostProcessor&gt; nonOrderedPostProcessors = new ArrayList&lt;&gt;(nonOrderedPostProcessorNames.size());
+       for (String postProcessorName : nonOrderedPostProcessorNames) {
+          nonOrderedPostProcessors.add(beanFactory.getBean(postProcessorName, BeanFactoryPostProcessor.class));
+       }
+       // nonOrderedPostProcessors =&gt; 
+        // EventListenerMethodProcessor
+        // PreserveErrorControllerTargetClassPostProcessor
+       invokeBeanFactoryPostProcessors(nonOrderedPostProcessors, beanFactory);
+
+       // Clear cached merged bean definitions since the post-processors might have
+       // modified the original metadata, e.g. replacing placeholders in values...
+       beanFactory.clearMetadataCache();
+    }
+}
+</code></pre>
+<p>BeanDefinitionRegistryPostProcessor.postProcessBeanDefinitionRegistry实现类</p>
+<pre><code class="language-text">ConfigurationClassPostProcessor
+MapperScannerConfigurer
+</code></pre>
+<p>BeanFactoryPostProcessor.postProcessBeanFactory实现类</p>
+<pre><code class="language-text">SharedMetadataReaderFactoryContextInitializer$CachingMetadataReaderFactoryPostProcessor
+ConfigurationWarningsApplicationContextInitializer$ConfigurationWarningsPostProcessor
+ConfigurationClassPostProcessor
+MapperScannerConfigurer
+
+ConfigFileApplicationListener$PropertySourceOrderingPostProcessor
+PropertySourcePlaceholderConfigurer
+EventListenerMethodProcessor
+ErrorMvcAutoConfiguration$PreserveErrorControllerTargetClassPostProcessor
+</code></pre>
+<p>ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry方法</p>
+<p>扫描包下文件注册beanDefinition</p>
+<p>通过 ClassPathBeanDefinitionScanner执行</p>
+<pre><code class="language-java">public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateComponentProvider {
+    protected Set&lt;BeanDefinitionHolder&gt; doScan(String... basePackages) {
+        Assert.notEmpty(basePackages, &quot;At least one base package must be specified&quot;);
+        Set&lt;BeanDefinitionHolder&gt; beanDefinitions = new LinkedHashSet&lt;&gt;();
+        for (String basePackage : basePackages) {
+            Set&lt;BeanDefinition&gt; candidates = findCandidateComponents(basePackage);
+            for (BeanDefinition candidate : candidates) {
+                ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
+                candidate.setScope(scopeMetadata.getScopeName());
+                String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
+                if (candidate instanceof AbstractBeanDefinition) {
+                    postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
+                }
+                if (candidate instanceof AnnotatedBeanDefinition) {
+                    AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
+                }
+                if (checkCandidate(beanName, candidate)) {
+                    BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
+                    definitionHolder =
+                            AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+                    beanDefinitions.add(definitionHolder);
+                    registerBeanDefinition(definitionHolder, this.registry);
+                }
+            }
+        }
+        return beanDefinitions;
+    }
+}
+</code></pre>
+<p>调用栈</p>
+<pre><code class="language-text">doScan:273, ClassPathBeanDefinitionScanner (org.springframework.context.annotation)
+parse:132, ComponentScanAnnotationParser (org.springframework.context.annotation)
+doProcessConfigurationClass:296, ConfigurationClassParser (org.springframework.context.annotation)
+processConfigurationClass:250, ConfigurationClassParser (org.springframework.context.annotation)
+parse:207, ConfigurationClassParser (org.springframework.context.annotation)
+parse:175, ConfigurationClassParser (org.springframework.context.annotation)
+processConfigBeanDefinitions:320, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+postProcessBeanDefinitionRegistry:237, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+invokeBeanDefinitionRegistryPostProcessors:280, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:96, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:707, AbstractApplicationContext (org.springframework.context.support)
+refresh:533, AbstractApplicationContext (org.springframework.context.support)
+refresh:143, ServletWebServerApplicationContext (org.springframework.boot.web.servlet.context)
+refresh:755, SpringApplication (org.springframework.boot)
+refresh:747, SpringApplication (org.springframework.boot)
+refreshContext:402, SpringApplication (org.springframework.boot)
+run:312, SpringApplication (org.springframework.boot)
+main:35, StartApplication (com.zuzuche.widget.start)
+</code></pre>
+<h3></h3>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

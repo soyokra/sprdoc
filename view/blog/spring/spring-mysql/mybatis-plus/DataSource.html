@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,242 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>DataSource</h1>
+<ul>
+<li>mybatis-plus的动态数据源DynamicRoutingDataSource集成了mybatis的SqlSessionFactory和hikari的HikariDataSource</li>
+<li>mybatis-plus的DynamicDataSourceAutoConfiguration自动装配是实现集成的重要入口</li>
+</ul>
+<p><img alt="图片替代文本" src="DataSource-Simple.drawio.png" /></p>
+<h2>创建DataSource</h2>
+<p>抽象接口的链路设计：</p>
+<pre><code class="language-text">DataSource --&gt; DynamicDataSourceProvider --&gt;DataSourceCreator
+</code></pre>
+<h3>DataSource</h3>
+<p><img alt="图片替代文本" src="DynamicRoutingDataSource.png" /></p>
+<ul>
+<li>自动装配将DynamicRoutingDataSource类注册为DataSource接口类型的Bean到Spring容器</li>
+<li>DynamicRoutingDataSource内部方法afterPropertiesSet调用了DynamicDataSourceProvider的loadDataSources方法加载底层数据源</li>
+</ul>
+<pre><code class="language-java">public class DynamicDataSourceAutoConfiguration implements InitializingBean {
+    @Bean
+    @ConditionalOnMissingBean
+    public DataSource dataSource() {
+        DynamicRoutingDataSource dataSource = new DynamicRoutingDataSource();
+        //省略...
+        return dataSource;
+    }
+}
+
+@Slf4j
+public class DynamicRoutingDataSource extends AbstractRoutingDataSource implements InitializingBean, DisposableBean {
+    @Autowired
+    private List&lt;DynamicDataSourceProvider&gt; providers;
+    /**
+     * 所有数据库
+     */
+    private final Map&lt;String, DataSource&gt; dataSourceMap = new ConcurrentHashMap&lt;&gt;();
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        // 添加并分组数据源
+        Map&lt;String, DataSource&gt; dataSources = new HashMap&lt;&gt;(16);
+        for (DynamicDataSourceProvider provider : providers) {
+            dataSources.putAll(provider.loadDataSources());
+        }
+        for (Map.Entry&lt;String, DataSource&gt; dsItem : dataSources.entrySet()) {
+            addDataSource(dsItem.getKey(), dsItem.getValue());
+        }
+    }
+}
+</code></pre>
+<h3>DynamicDataSourceProvider</h3>
+<p><img alt="图片替代文本" src="YmlDynamicDataSourceProvider.png" /></p>
+<ul>
+<li>自动装配将YmlDynamicDataSourceProvider类注册为DynamicDataSourceProvider接口类型的Bean到Spring容器</li>
+<li>YmlDynamicDataSourceProvider通过其父类AbstractDataSourceProvider的createDataSourceMap方法调用到DefaultDataSourceCreator接口的createDataSource方法创建数据源</li>
+</ul>
+<pre><code class="language-java">public class DynamicDataSourceAutoConfiguration implements InitializingBean {
+    @Bean
+    public DynamicDataSourceProvider ymlDynamicDataSourceProvider() {
+        return new YmlDynamicDataSourceProvider(properties.getDatasource());
+    }
+}
+
+public class YmlDynamicDataSourceProvider extends AbstractDataSourceProvider {
+    @Override
+    public Map&lt;String, DataSource&gt; loadDataSources() {
+        return createDataSourceMap(dataSourcePropertiesMap);
+    }
+}
+
+@Slf4j
+public abstract class AbstractDataSourceProvider implements DynamicDataSourceProvider {
+    @Autowired
+    private DefaultDataSourceCreator defaultDataSourceCreator;
+
+    protected Map&lt;String, DataSource&gt; createDataSourceMap(
+            Map&lt;String, DataSourceProperty&gt; dataSourcePropertiesMap) {
+        Map&lt;String, DataSource&gt; dataSourceMap = new HashMap&lt;&gt;(dataSourcePropertiesMap.size() * 2);
+        for (Map.Entry&lt;String, DataSourceProperty&gt; item : dataSourcePropertiesMap.entrySet()) {
+            String dsName = item.getKey();
+            DataSourceProperty dataSourceProperty = item.getValue();
+            String poolName = dataSourceProperty.getPoolName();
+            if (poolName == null || &quot;&quot;.equals(poolName)) {
+                poolName = dsName;
+            }
+            dataSourceProperty.setPoolName(poolName);
+            dataSourceMap.put(dsName, defaultDataSourceCreator.createDataSource(dataSourceProperty));
+        }
+        return dataSourceMap;
+    }
+}
+</code></pre>
+<h3>DataSourceCreator</h3>
+<p><img alt="图片替代文本" src="HikariDataSourceCreator.png" /></p>
+<ul>
+<li>自动装配将HikariDataSourceCreator类注册为DataSourceCreator接口类型的Bean到Spring容器</li>
+<li>多个注册的DataSourceCreator，List<DataSourceCreator>又被设置到DefaultDataSourceCreator类的属性</li>
+<li>DefaultDataSourceCreator的createDataSource方法循环调用DataSourceCreator接口实现类的createDataSource方法</li>
+<li>DataSourceCreator接口实现类的createDataSource方法会先调用其父类AbstractDataSourceCreator的createDataSource方法</li>
+<li>AbstractDataSourceCreator的createDataSource方法调用的wrapDataSource方法实现了p6spay数据源的包裹</li>
+</ul>
+<pre><code class="language-java">public class DynamicDataSourceCreatorAutoConfiguration {
+    @ConditionalOnClass(HikariDataSource.class)
+    @Configuration
+    static class HikariDataSourceCreatorConfiguration {
+        @Bean
+        @Order(HIKARI_ORDER)
+        public HikariDataSourceCreator hikariDataSourceCreator() {
+            return new HikariDataSourceCreator();
+        }
+    }
+
+    @Primary
+    @Bean
+    @ConditionalOnMissingBean
+    public DefaultDataSourceCreator dataSourceCreator(List&lt;DataSourceCreator&gt; dataSourceCreators) {
+        DefaultDataSourceCreator defaultDataSourceCreator = new DefaultDataSourceCreator();
+        defaultDataSourceCreator.setCreators(dataSourceCreators);
+        return defaultDataSourceCreator;
+    }
+}
+
+public class DefaultDataSourceCreator {
+
+    private List&lt;DataSourceCreator&gt; creators;
+
+    public DataSource createDataSource(DataSourceProperty dataSourceProperty) {
+        DataSourceCreator dataSourceCreator = null;
+        for (DataSourceCreator creator : this.creators) {
+            if (creator.support(dataSourceProperty)) {
+                dataSourceCreator = creator;
+                break;
+            }
+        }
+        if (dataSourceCreator == null) {
+            throw new IllegalStateException(&quot;creator must not be null,please check the DataSourceCreator&quot;);
+        }
+        return dataSourceCreator.createDataSource(dataSourceProperty);
+    }
+
+}
+
+@Slf4j
+public abstract class AbstractDataSourceCreator implements DataSourceCreator {
+    @Override
+    public DataSource createDataSource(DataSourceProperty dataSourceProperty) {
+        DataSource dataSource = doCreateDataSource(dataSourceProperty);
+        return wrapDataSource(dataSource, dataSourceProperty);
+    }
+
+    private DataSource wrapDataSource(DataSource dataSource, DataSourceProperty dataSourceProperty) {
+        DataSource targetDataSource = dataSource;
+        Boolean enabledP6spy = properties.getP6spy() &amp;&amp; dataSourceProperty.getP6spy();
+        if (enabledP6spy) {
+            targetDataSource = new P6DataSource(dataSource);
+        }
+        return new ItemDataSource(name, dataSource, targetDataSource, enabledP6spy, enabledSeata, seataMode);
+    }
+}
+</code></pre>
+<h3>HikariDataSourceCreator</h3>
+<p>HikariDataSourceCreator负责创建HikariDataSource</p>
+<pre><code class="language-java">public class HikariDataSourceCreator extends AbstractDataSourceCreator implements DataSourceCreator, InitializingBean {
+    @Override
+    public DataSource doCreateDataSource(DataSourceProperty dataSourceProperty) {
+        HikariConfig config = MERGE_CREATOR.create(gConfig, dataSourceProperty.getHikari());
+        //省略。。。
+        HikariDataSource dataSource = new HikariDataSource();
+        //省略。。。
+        return dataSource;
+    }
+}
+
+
+</code></pre>
+<h3>DriverDataSource</h3>
+<p>hikari的DriverDataSource类构造方法加载指定的JDBC实现作为操作数据库的驱动</p>
+<pre><code class="language-java">package com.zaxxer.hikari.util;
+
+public final class DriverDataSource implements DataSource {
+    public DriverDataSource(String jdbcUrl, String driverClassName, Properties properties, String username, String password)
+    {
+        driver = DriverManager.getDriver(jdbcUrl);
+    }
+}
+</code></pre>
+<h2>DataSource注入SqlSessionFactory</h2>
+<p>主要的调用链路如下</p>
+<pre><code class="language-text">SqlSessionTemplate --&gt; SqlSessionFactory --&gt; DynamicRoutingDataSource
+</code></pre>
+<ul>
+<li>自动装配注册了SqlSessionFactory类型的Bean，注入的DataSource就是DynamicRoutingDataSource</li>
+<li>自动装配注册了SqlSessionTemplate类型的Bean，其方法注入了SqlSessionFactory</li>
+<li>当调用sqlSessionTemplate执行SQL时，使用的数据源是DynamicRoutingDataSource，底层用就是HikariDataSource。</li>
+<li>除了HikariDataSource，DynamicDataSourceCreatorAutoConfiguration还可以注册DruidDataSource，BeeDataSource，BasicDataSource等等。</li>
+</ul>
+<pre><code class="language-java">public class MybatisPlusAutoConfiguration implements InitializingBean {
+    @Bean
+    @ConditionalOnMissingBean
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+        MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
+        factory.setDataSource(dataSource);
+        // 省略
+        return factory.getObject();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
+        ExecutorType executorType = this.properties.getExecutorType();
+        return executorType != null ? new SqlSessionTemplate(sqlSessionFactory, executorType) : new SqlSessionTemplate(sqlSessionFactory);
+    }
+}
+</code></pre>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取

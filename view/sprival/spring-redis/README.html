@@ -851,7 +851,24 @@
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>redis</h1>
+<h2>组件</h2>
+<ul>
+<li>spring cache</li>
+<li>spring data redis </li>
+<li>redisson</li>
+</ul>
+<p>spring cache 是声明式缓存，使用多种缓存驱动，包括本地内存缓存和redis缓存，使用redis驱动时，操作redis取决于
+org.springframework.data.redis.connection.RedisConnectionFactory的接口实现</p>
+<p>spring data redis 是操作redis的集成客户端，底层可以选择使用jedis或lettuce</p>
+<p>redisson 是比较全面的redis客户端操作，引入redisson的时候，其自动装配类会优先注册基于redisson client 的 RedisConnectionFactory。也就意味着
+spring cache 和 spring data redis用的都是redisson client操作redis</p>
+<p><img alt="redis_client.png" src="redis_client.png" /></p>
+<h2>redisson</h2>
+<h3>配置说明</h3>
+<p>TODO</p>
+<h3>监控预警</h3>
+<p>TODO</p>
         </article>
     </div>
 </main>

@@ -851,7 +851,17 @@
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>spring-http-client</h1>
+<p>spring http client 通常包括以下几个组件</p>
+<ul>
+<li>负责处理请求响应的http客户端，例如jdk自带的HttpURLConnection，Apache HttpClient，OkHttpClient</li>
+<li>熔断器，例如hystrix，resilience4j-circuitbreaker，Spring Cloud CircuitBreaker, sentinel</li>
+<li>重试器，例如Resilience4j-retry</li>
+<li>负载均衡器，例如Ribbon，load-balance</li>
+</ul>
+<p>Retrofit 和 Feign两个声明式http客户端集成了相关的组件</p>
+<h2>OkHttp</h2>
+<h2>监控</h2>
         </article>
     </div>
 </main>

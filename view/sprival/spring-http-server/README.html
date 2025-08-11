@@ -851,7 +851,63 @@
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h1>spring-http-server</h1>
+<ul>
+<li>web容器：jetty</li>
+<li>分布式锁：redisson</li>
+<li>限流：guava(RateLimiter)</li>
+<li>日志：请求头，请求url，请求体，请求方法，响应头，响应状态，响应体 </li>
+<li>simple: 请求url，请求方法，响应状态</li>
+<li>standard: 请求url，请求方法，响应状态，请求体，响应体</li>
+<li>all: 请求头，请求url，请求体，请求方法，响应头，响应状态，响应体</li>
+</ul>
+<h2>监控指标</h2>
+<pre><code class="language-plaintext">http_server_requests_seconds_count
+http_server_requests_seconds_max
+http_server_requests_seconds_sum
+</code></pre>
+<h4>PromQL</h4>
+<p>QPS</p>
+<pre><code class="language-PromQL"># top 10 qps
+topk(10, sum(rate(http_server_requests_seconds_count[1m])) by (uri))
+</code></pre>
+<h2>配置说明</h2>
+<p>配置源码在ServerProperties.Jetty</p>
+<p>| 配置项                               | 默认值   | 说明       |
+| --------------------------------- | ----- | -------- |
+| server.jetty.threads.max          | 200   | 最大线程数    |
+| server.jetty.threads.min          | 8     | 最小线程数    |
+| server.jetty.threads.idle-timeout | 60000 | 线程空闲超时时间 |</p>
+<h2>监控预警</h2>
+<h4>监控指标</h4>
+<p>| 指标名称                     | 类型    | 说明               |
+| ------------------------ | ----- | ---------------- |
+| jetty_threads_busy       | gauge | 正在处理请求的活跃线程数     |
+| jetty_threads_config_max | gauge | 线程池配置的最大线程数      |
+| jetty_threads_config_min | gauge | 线程池配置的最小线程数      |
+| jetty_threads_current    | gauge | 当前实际拥有的线程数       |
+| jetty_threads_idle       | gauge | 空闲等待请求的线程数       |
+| jetty_threads_jobs       | gauge | 线程池任务队列中等待处理的请求数 |</p>
+<h4>Grafana配置</h4>
+<pre><code class="language-plaintext">sum(jetty_threads_busy) by (job)
+sum(jetty_threads_config_max) by (job)
+sum(jetty_threads_config_min) by (job)
+sum(jetty_threads_current) by (job)
+sum(jetty_threads_idle) by (job)
+sum(jetty_threads_jobs) by (job)
+</code></pre>
+<h2>源码分析</h2>
+<h4>调用链路</h4>
+<pre><code class="language-plaintext">AbstractApplicationContext.onRefresh
+=&gt; ServletWebServerApplicationContext.onRefresh
+=&gt; ServletWebServerApplicationContext.createWebServer
+=&gt; ServletWebServerFactory.getWebServer
+=&gt; JettyServletWebServerFactory.getWebServer
+</code></pre>
+<h4>自动装配相关类</h4>
+<pre><code class="language-plaintext">ServletWebServerFactoryAutoConfiguration
+ServletWebServerFactoryConfiguration
+</code></pre>
         </article>
     </div>
 </main>

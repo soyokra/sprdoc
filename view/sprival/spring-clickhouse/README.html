@@ -851,7 +851,140 @@
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h2>clickhouse客户端</h2>
+<p>clickhouse客户端底层使用的是http协议，但是交互层遵循jdbc的接口。因此可以作为数据源整合到mybatis-plus中</p>
+<h3>数据源创建器</h3>
+<pre><code class="language-java">package com.soyokra.sprival.config.clickhouse;
+
+import com.baomidou.dynamic.datasource.creator.AbstractDataSourceCreator;
+import com.baomidou.dynamic.datasource.creator.DataSourceCreator;
+import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DataSourceProperty;
+import org.springframework.beans.factory.InitializingBean;
+import ru.yandex.clickhouse.ClickHouseDataSource;
+import ru.yandex.clickhouse.settings.ClickHouseProperties;
+
+import javax.sql.DataSource;
+
+public class ClickHouseDataSourceCreator extends AbstractDataSourceCreator implements DataSourceCreator, InitializingBean {
+
+  private final SprivalClickHouseProperties clickHouseProperties;
+
+  public static final String CLICK_HOUSE_DATASOURCE = &quot;ru.yandex.clickhouse.ClickHouseDataSource&quot;;
+
+  public ClickHouseDataSourceCreator(SprivalClickHouseProperties clickHouseProperties) {
+    this.clickHouseProperties = clickHouseProperties;
+  }
+
+  @Override
+  public DataSource doCreateDataSource(DataSourceProperty dataSourceProperty) {
+    ClickHouseProperties clickHouseProperties = new ClickHouseProperties();
+    clickHouseProperties.setUser(dataSourceProperty.getUsername());
+    clickHouseProperties.setPassword(dataSourceProperty.getPassword());
+    clickHouseProperties.setDatabase(this.clickHouseProperties.getDatabase());
+    return new ClickHouseDataSource(dataSourceProperty.getUrl(), clickHouseProperties);
+  }
+
+  @Override
+  public boolean support(DataSourceProperty dataSourceProperty) {
+    Class&lt;? extends DataSource&gt; type = dataSourceProperty.getType();
+    return CLICK_HOUSE_DATASOURCE.equals(type.getName());
+  }
+
+  //  Spring 容器完成对 Bean 的属性设置之后调用
+  @Override
+  public void afterPropertiesSet() throws Exception {
+
+  }
+}
+</code></pre>
+<h3>数据源创建器自动装配</h3>
+<pre><code class="language-java">package com.soyokra.sprival.config.clickhouse;
+
+import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceCreatorAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import ru.yandex.clickhouse.ClickHouseDataSource;
+
+
+@Configuration
+public class ClickHouseDataSourceCreatorAutoConfiguration {
+  @ConditionalOnClass(ClickHouseDataSource.class)
+  @Configuration
+  static class ClickHouseDataSourceCreatorConfiguration {
+    @Bean
+    @Order(DynamicDataSourceCreatorAutoConfiguration.DEFAULT_ORDER - 1)
+    public SprivalClickHouseDataSourceCreator clickHouseDataSourceCreator(SprivalClickHouseProperties clickHouseProperties) {
+      return new SprivalClickHouseDataSourceCreator(clickHouseProperties);
+    }
+  }
+}
+</code></pre>
+<h3>自定义配置类</h3>
+<pre><code class="language-java">package com.soyokra.sprival.config.clickhouse;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@Data
+@ConfigurationProperties(prefix = &quot;spring.clickhouse&quot;)
+public class ClickHouseProperties {
+    private String database;
+}
+</code></pre>
+<h3>Java类型映射参考</h3>
+<p>clickhouse数据类型相比数据库有多不同，以下是映射类型的参考</p>
+<h4>Int | UInt</h4>
+<ul>
+<li>Int8 =&gt; byte</li>
+<li>Int16 =&gt; short</li>
+<li>Int32 =&gt; int</li>
+<li>Int64 =&gt; long</li>
+<li>Int128 =&gt; String</li>
+<li>Int256 =&gt; String</li>
+<li>UInt8 =&gt; short</li>
+<li>UInt16 =&gt; int</li>
+<li>UInt32 =&gt; long</li>
+<li>UInt64 =&gt; String</li>
+<li>UInt128 =&gt; String</li>
+<li>UInt256 =&gt; String</li>
+</ul>
+<h4>Float32 | Float64 | BFloat16</h4>
+<ul>
+<li>
+<p>Float32 =&gt; float|String</p>
+</li>
+<li>
+<p>Float64 =&gt; double|String</p>
+</li>
+<li>
+<p>BFloat16 =&gt; String</p>
+</li>
+</ul>
+<blockquote>
+<p>ClickHouse的浮点型有NaN 和 Inf这样的表达方式，如果有使用到这种的话，只能用字符串表示</p>
+</blockquote>
+<h4>Decimal</h4>
+<p>Decimal32 =&gt; BigDecimal
+Decimal64 =&gt; BigDecimal
+Decimal128 =&gt; BigDecimal
+Decimal256 =&gt; BigDecimal</p>
+<h4>String</h4>
+<p>String =&gt; String
+FixedString =&gt; String</p>
+<h4>Date</h4>
+<p>Date32 =&gt; Date | Time
+DateTime =&gt; Date | Time
+DateTime64 =&gt; Date | Time</p>
+<h4>Enum</h4>
+<p>Enum =&gt; String</p>
+<h4>Bool</h4>
+<p>Bool =&gt; bool</p>
+<h4>UUID</h4>
+<p>UUID =&gt; Sting</p>
         </article>
     </div>
 </main>

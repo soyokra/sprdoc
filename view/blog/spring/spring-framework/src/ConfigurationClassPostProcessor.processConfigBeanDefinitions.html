@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprival</title>
+    <title>Blog</title>
 
     <style>
         /* 基础样式与变量定义 */
@@ -790,81 +790,194 @@
         <!-- 左侧Logo -->
         <div class="flex items-center space-x-4">
             <a href="#" class="logo">
-                <span>SPRIVAL</span>
+                <span>Blog</span>
             </a>
         </div>
 
         <!-- 中间导航链接 -->
         <nav class="md:flex items-center space-x-6">
+
         </nav>
 
         <!-- 右侧功能区 -->
         <div class="flex items-center space-x-4">
-            <a href="/sprdoc/blog_index.html" class="nav-link active">Blog</a>
-            <a href="https://github.com/soyokra/sprival" class="nav-link active">Github</a>
+            <a href="/sprdoc/index.html" class="nav-link active">Sprival</a>
         </div>
     </div>
 </header>
-
-<!-- 左侧固定章节导航 - 始终显示 -->
-<aside id="left-sidebar" class="overflow-y-auto scrollbar-hide">
-    <div class="p-4">
-        <h2 class="chapter-title mb-4">Sprival</h2>
-        <nav class="space-y-1">
-            <a href="/sprdoc/view/sprival/README.html" class="chapter-link">
-                <span>快速开始</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-server/README.html" class="chapter-link">
-                <span>HTTP 服务端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-http-client/README.html" class="chapter-link">
-                <span>HTTP 客户端</span>
-            </a>
-            <a href="/sprdoc/view/sprival/spring-mysql/README.html" class="chapter-link">
-                <span>数据库</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-rabbit/README.html" class="chapter-link">
-                <span>RabbitMQ</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-kafka/README.html" class="chapter-link">
-                <span>Kafka</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-mongo/README.html" class="chapter-link">
-                <span>MongoDB</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-ealsticsearch/README.html" class="chapter-link">
-                <span>Elasticsearch</span>
-            </a>
-
-            <a href="/sprdoc/view/sprival/spring-clickhouse/README.html" class="chapter-link">
-                <span>Clickhouse</span>
-            </a>
-        </nav>
-    </div>
-</aside>
 
 <!-- 主内容区 -->
 <main class="main-content">
     <div class="container max-w-4xl">
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
-            <h1>快速开始</h1>
+            <h2>说明</h2>
+<p>配置类处理器
+- 处理@Component注解类，注册为BeanDefinition
+- 处理@Configuration注解类，注册为BeanDefinition
+- 处理@Import注解类
+- 处理实现ImportSelector接口方式的类，执行注册BeanDefinition的方法
+  - SpringBoot的自动装配AutoConfigurationImportSelector使用的是ImportSelector接口方式</p>
+<blockquote>
+<p>configCandidates实际上就是SprivalApplication</p>
+</blockquote>
+<pre><code class="language-java">public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPostProcessor,
+        PriorityOrdered, ResourceLoaderAware, BeanClassLoaderAware, EnvironmentAware {
+
+    public void processConfigBeanDefinitions(BeanDefinitionRegistry registry) {
+        List&lt;BeanDefinitionHolder&gt; configCandidates = new ArrayList&lt;&gt;();
+
+        // registry =&gt; sprivalApplication的beanFactory
+        // 6个RootBeenDefinition和自身 sprivalApplication
+        String[] candidateNames = registry.getBeanDefinitionNames();
+
+        for (String beanName : candidateNames) {
+            BeanDefinition beanDef = registry.getBeanDefinition(beanName);
+            if (beanDef.getAttribute(ConfigurationClassUtils.CONFIGURATION_CLASS_ATTRIBUTE) != null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(&quot;Bean definition has already been processed as a configuration class: &quot; + beanDef);
+                }
+            } else if (ConfigurationClassUtils.checkConfigurationClassCandidate(beanDef, this.metadataReaderFactory)) {
+                // 筛选出sprivalApplication
+                configCandidates.add(new BeanDefinitionHolder(beanDef, beanName));
+            }
+        }
+
+        // Return immediately if no @Configuration classes were found
+        if (configCandidates.isEmpty()) {
+            return;
+        }
+
+        // Sort by previously determined @Order value, if applicable
+        configCandidates.sort((bd1, bd2) -&gt; {
+            int i1 = ConfigurationClassUtils.getOrder(bd1.getBeanDefinition());
+            int i2 = ConfigurationClassUtils.getOrder(bd2.getBeanDefinition());
+            return Integer.compare(i1, i2);
+        });
+
+        // Detect any custom bean name generation strategy supplied through the enclosing application context
+        SingletonBeanRegistry sbr = null;
+        if (registry instanceof SingletonBeanRegistry) {
+            sbr = (SingletonBeanRegistry) registry;
+            if (!this.localBeanNameGeneratorSet) {
+                BeanNameGenerator generator = (BeanNameGenerator) sbr.getSingleton(
+                        AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR);
+                if (generator != null) {
+                    this.componentScanBeanNameGenerator = generator;
+                    this.importBeanNameGenerator = generator;
+                }
+            }
+        }
+
+        if (this.environment == null) {
+            this.environment = new StandardEnvironment();
+        }
+
+        // Parse each @Configuration class
+        ConfigurationClassParser parser = new ConfigurationClassParser(
+                this.metadataReaderFactory, this.problemReporter, this.environment,
+                this.resourceLoader, this.componentScanBeanNameGenerator, registry);
+
+        Set&lt;BeanDefinitionHolder&gt; candidates = new LinkedHashSet&lt;&gt;(configCandidates);
+        Set&lt;ConfigurationClass&gt; alreadyParsed = new HashSet&lt;&gt;(configCandidates.size());
+        do {
+            // 
+            parser.parse(candidates);
+            parser.validate();
+
+            Set&lt;ConfigurationClass&gt; configClasses = new LinkedHashSet&lt;&gt;(parser.getConfigurationClasses());
+            configClasses.removeAll(alreadyParsed);
+
+            // Read the model and create bean definitions based on its content
+            if (this.reader == null) {
+                this.reader = new ConfigurationClassBeanDefinitionReader(
+                        registry, this.sourceExtractor, this.resourceLoader, this.environment,
+                        this.importBeanNameGenerator, parser.getImportRegistry());
+            }
+            this.reader.loadBeanDefinitions(configClasses);
+            alreadyParsed.addAll(configClasses);
+
+            candidates.clear();
+            if (registry.getBeanDefinitionCount() &gt; candidateNames.length) {
+                String[] newCandidateNames = registry.getBeanDefinitionNames();
+                Set&lt;String&gt; oldCandidateNames = new HashSet&lt;&gt;(Arrays.asList(candidateNames));
+                Set&lt;String&gt; alreadyParsedClasses = new HashSet&lt;&gt;();
+                for (ConfigurationClass configurationClass : alreadyParsed) {
+                    alreadyParsedClasses.add(configurationClass.getMetadata().getClassName());
+                }
+                for (String candidateName : newCandidateNames) {
+                    if (!oldCandidateNames.contains(candidateName)) {
+                        BeanDefinition bd = registry.getBeanDefinition(candidateName);
+                        if (ConfigurationClassUtils.checkConfigurationClassCandidate(bd, this.metadataReaderFactory) &amp;&amp;
+                                !alreadyParsedClasses.contains(bd.getBeanClassName())) {
+                            candidates.add(new BeanDefinitionHolder(bd, candidateName));
+                        }
+                    }
+                }
+                candidateNames = newCandidateNames;
+            }
+        }
+        while (!candidates.isEmpty());
+
+        // Register the ImportRegistry as a bean in order to support ImportAware @Configuration classes
+        if (sbr != null &amp;&amp; !sbr.containsSingleton(IMPORT_REGISTRY_BEAN_NAME)) {
+            sbr.registerSingleton(IMPORT_REGISTRY_BEAN_NAME, parser.getImportRegistry());
+        }
+
+        if (this.metadataReaderFactory instanceof CachingMetadataReaderFactory) {
+            // Clear cache in externally provided MetadataReaderFactory; this is a no-op
+            // for a shared cache since it'll be cleared by the ApplicationContext.
+            ((CachingMetadataReaderFactory) this.metadataReaderFactory).clearCache();
+        }
+    }
+}
+</code></pre>
+<h2></h2>
+<p>执行 AutoConfigurationImportSelector 类的地方</p>
+<pre><code class="language-text">getAutoConfigurationEntry:122, AutoConfigurationImportSelector (org.springframework.boot.autoconfigure)
+ :434, AutoConfigurationImportSelector$AutoConfigurationGroup (org.springframework.boot.autoconfigure)
+getImports:879, ConfigurationClassParser$DeferredImportSelectorGrouping (org.springframework.context.annotation)
+processGroupImports:809, ConfigurationClassParser$DeferredImportSelectorGroupingHandler (org.springframework.context.annotation)
+process:780, ConfigurationClassParser$DeferredImportSelectorHandler (org.springframework.context.annotation)
+parse:193, ConfigurationClassParser (org.springframework.context.annotation)
+processConfigBeanDefinitions:320, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+postProcessBeanDefinitionRegistry:237, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+invokeBeanDefinitionRegistryPostProcessors:280, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:96, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:707, AbstractApplicationContext (org.springframework.context.support)
+refresh:533, AbstractApplicationContext (org.springframework.context.support)
+refresh:143, ServletWebServerApplicationContext (org.springframework.boot.web.servlet.context)
+refresh:755, SpringApplication (org.springframework.boot)
+refresh:747, SpringApplication (org.springframework.boot)
+refreshContext:402, SpringApplication (org.springframework.boot)
+run:312, SpringApplication (org.springframework.boot)
+main:18, SprivalApplication (com.soyokra.sprival)
+</code></pre>
+<p>ImportBeanDefinitionRegistrar.registerBeanDefinitions</p>
+<pre><code class="language-text">registerBeanDefinitions:60, AutoProxyRegistrar (org.springframework.context.annotation)
+registerBeanDefinitions:86, ImportBeanDefinitionRegistrar (org.springframework.context.annotation)
+lambda$loadBeanDefinitionsFromRegistrars$1:384, ConfigurationClassBeanDefinitionReader (org.springframework.context.annotation)
+accept:-1, 2096194236 (org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader$$Lambda$244)
+forEach:684, LinkedHashMap (java.util)
+loadBeanDefinitionsFromRegistrars:383, ConfigurationClassBeanDefinitionReader (org.springframework.context.annotation)
+loadBeanDefinitionsForConfigurationClass:148, ConfigurationClassBeanDefinitionReader (org.springframework.context.annotation)
+loadBeanDefinitions:120, ConfigurationClassBeanDefinitionReader (org.springframework.context.annotation)
+processConfigBeanDefinitions:332, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+postProcessBeanDefinitionRegistry:237, ConfigurationClassPostProcessor (org.springframework.context.annotation)
+invokeBeanDefinitionRegistryPostProcessors:280, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:96, PostProcessorRegistrationDelegate (org.springframework.context.support)
+invokeBeanFactoryPostProcessors:707, AbstractApplicationContext (org.springframework.context.support)
+refresh:533, AbstractApplicationContext (org.springframework.context.support)
+refresh:143, ServletWebServerApplicationContext (org.springframework.boot.web.servlet.context)
+refresh:755, SpringApplication (org.springframework.boot)
+refresh:747, SpringApplication (org.springframework.boot)
+refreshContext:402, SpringApplication (org.springframework.boot)
+run:312, SpringApplication (org.springframework.boot)
+main:18, SprivalApplication (com.soyokra.sprival)
+</code></pre>
         </article>
     </div>
 </main>
 
-<!-- 右侧悬浮二级标题导航 - 始终显示 -->
-<!--  <aside id="right-sidebar" class="scrollbar-hide">-->
-<!--    <h3 class="toc-title">目录导航</h3>-->
-<!--    <nav class="toc-nav space-y-1">-->
-<!--      <a href="/sprdoc/view/sprival/README.html" class="toc-link">1. 快速开始</a>-->
-<!--      <a href="#section-1-1" class="toc-link toc-level-2">1.1 Web开发的定义与重要性</a>-->
-<!--      <a href="/sprdoc/view/sprival/spring-myql/README.html" class="toc-link">2. 数据库</a>-->
-<!--    </nav>-->
-<!--  </aside>-->
 
 <script>
     // 元素获取
