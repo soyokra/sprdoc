@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # 源目录和目标目录
     source_directory = "doc/blog"
     destination_directory = "view/blog"
-    framework = "blog"
+    framework = "blog_framework"
 
     print(f"开始转换Markdown文件，从 '{source_directory}' 到 '{destination_directory}'")
     convert_md_to_html(source_directory, destination_directory, framework)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # 源目录和目标目录
     source_directory = "doc/sprival"
     destination_directory = "view/sprival"
-    framework = "sprival"
+    framework = "sprival_framework"
 
     print(f"开始转换Markdown文件，从 '{source_directory}' 到 '{destination_directory}'")
     convert_md_to_html(source_directory, destination_directory, framework)
