@@ -1,6 +1,0 @@
-- sprival
-- blog 
-- about
-
-
-
