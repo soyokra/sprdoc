@@ -25,10 +25,11 @@ public SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource) throws IOE
 }
 ```
 
-现实的业务场景可能需要连接多个数据库，一个现成的解决方案就是引入mybatis-plus的多数据源组件。
+现实的业务场景可能需要连接多个数据库，就需要引入mybatis-plus的多数据源组件。
 
 mybatis-plus的多数据源DynamicRoutingDataSource也是DataSource的实现，并且集成了各种线程池和p6spy日志功能。
 其原理如图所示：
+
 ![图片替代文本](DataSource-Simple.drawio.png)
 
 mybatis-plus的DynamicRoutingDataSource，hikari的HikariDataSource，p6spy的P6DataSource如同俄罗斯套娃，通过
@@ -91,10 +92,13 @@ public class DynamicRoutingDataSource extends AbstractRoutingDataSource implemen
 
 ### DynamicDataSourceProvider
 
+DynamicDataSourceProvider是多数据源加载接口，默认的实现YmlDynamicDataSourceProvider类是从yml信息中加载所有数据源
+
+可以通过实现这个接口并且注册到spring的方式重写数据源加载逻辑
+
 ![图片替代文本](YmlDynamicDataSourceProvider.png)
 
-- 自动装配将YmlDynamicDataSourceProvider类注册为DynamicDataSourceProvider接口类型的Bean到Spring容器
-- YmlDynamicDataSourceProvider通过其父类AbstractDataSourceProvider的createDataSourceMap方法调用到DefaultDataSourceCreator接口的createDataSource方法创建数据源
+自动装配注册了YmlDynamicDataSourceProvider
 
 ```java
 public class DynamicDataSourceAutoConfiguration implements InitializingBean {
@@ -103,7 +107,12 @@ public class DynamicDataSourceAutoConfiguration implements InitializingBean {
         return new YmlDynamicDataSourceProvider(properties.getDatasource());
     }
 }
+```
 
+YmlDynamicDataSourceProvider通过其父类AbstractDataSourceProvider的createDataSourceMap方法
+调用到DefaultDataSourceCreator接口的createDataSource方法创建数据源
+
+```java
 public class YmlDynamicDataSourceProvider extends AbstractDataSourceProvider {
     @Override
     public Map<String, DataSource> loadDataSources() {
@@ -136,13 +145,13 @@ public abstract class AbstractDataSourceProvider implements DynamicDataSourcePro
 
 ### DataSourceCreator
 
+DataSourceCreator是不同DataSource的创建接口，选用hikariDataSource,对应就是由HikariDataSourceCreator创建
+
+可以通过实现自己的DataSourceCreator增加数据源，或者覆盖默认的数据源创建器
+
 ![图片替代文本](HikariDataSourceCreator.png)
 
-- 自动装配将HikariDataSourceCreator类注册为DataSourceCreator接口类型的Bean到Spring容器
-- 多个注册的DataSourceCreator，List<DataSourceCreator>又被设置到DefaultDataSourceCreator类的属性
-- DefaultDataSourceCreator的createDataSource方法循环调用DataSourceCreator接口实现类的createDataSource方法
-- DataSourceCreator接口实现类的createDataSource方法会先调用其父类AbstractDataSourceCreator的createDataSource方法
-- AbstractDataSourceCreator的createDataSource方法调用的wrapDataSource方法实现了p6spay数据源的包裹
+自动装配将HikariDataSourceCreator类注册为DataSourceCreator接口类型的Bean到Spring容器
 
 ```java
 public class DynamicDataSourceCreatorAutoConfiguration {
@@ -165,7 +174,28 @@ public class DynamicDataSourceCreatorAutoConfiguration {
         return defaultDataSourceCreator;
     }
 }
+```
 
+多个注册的DataSourceCreator，List<DataSourceCreator>又被设置到DefaultDataSourceCreator类的属性
+
+```javas
+public class DynamicDataSourceCreatorAutoConfiguration {
+    @Primary
+    @Bean
+    @ConditionalOnMissingBean
+    public DefaultDataSourceCreator dataSourceCreator(List<DataSourceCreator> dataSourceCreators) {
+        DefaultDataSourceCreator defaultDataSourceCreator = new DefaultDataSourceCreator();
+        defaultDataSourceCreator.setCreators(dataSourceCreators);
+        return defaultDataSourceCreator;
+    }
+}
+```
+
+DefaultDataSourceCreator的createDataSource方法循环调用DataSourceCreator接口实现类的createDataSource方法
+
+特别的，如果你实现了的DataSourceCreator和系统默认实现是同一个，比如都是hikari，并且注册了，那么这里使用顺序靠前的那个创建器
+
+```java
 public class DefaultDataSourceCreator {
 
     private List<DataSourceCreator> creators;
@@ -185,7 +215,15 @@ public class DefaultDataSourceCreator {
     }
 
 }
+```
 
+DataSourceCreator接口实现类的createDataSource方法会先调用其父类AbstractDataSourceCreator的createDataSource方法
+
+AbstractDataSourceCreator的createDataSource方法调用的wrapDataSource方法实现了p6spay数据源的包裹
+
+mybatis-plus是在这里实现对p6spy功能的整合
+
+```java
 @Slf4j
 public abstract class AbstractDataSourceCreator implements DataSourceCreator {
     @Override
@@ -206,7 +244,9 @@ public abstract class AbstractDataSourceCreator implements DataSourceCreator {
 ```
 
 ### HikariDataSourceCreator
+
 HikariDataSourceCreator负责创建HikariDataSource
+
 ```java
 public class HikariDataSourceCreator extends AbstractDataSourceCreator implements DataSourceCreator, InitializingBean {
     @Override
@@ -223,7 +263,9 @@ public class HikariDataSourceCreator extends AbstractDataSourceCreator implement
 ```
 
 ### DriverDataSource
+
 hikari的DriverDataSource类构造方法加载指定的JDBC实现作为操作数据库的驱动
+
 ```java
 package com.zaxxer.hikari.util;
 
@@ -244,10 +286,7 @@ public final class DriverDataSource implements DataSource {
 SqlSessionTemplate --> SqlSessionFactory --> DynamicRoutingDataSource
 ```
 
-- 自动装配注册了SqlSessionFactory类型的Bean，注入的DataSource就是DynamicRoutingDataSource
-- 自动装配注册了SqlSessionTemplate类型的Bean，其方法注入了SqlSessionFactory
-- 当调用sqlSessionTemplate执行SQL时，使用的数据源是DynamicRoutingDataSource，底层用就是HikariDataSource。
-- 除了HikariDataSource，DynamicDataSourceCreatorAutoConfiguration还可以注册DruidDataSource，BeeDataSource，BasicDataSource等等。
+MybatisPlusAutoConfiguration这个自动装配将DynamicRoutingDataSource设置到SqlSessionFactory，完成和mybatis的DataSource整合
 
 ```java
 public class MybatisPlusAutoConfiguration implements InitializingBean {
