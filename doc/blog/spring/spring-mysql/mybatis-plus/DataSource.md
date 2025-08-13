@@ -1,9 +1,38 @@
-# DataSource
+# mybatis-plus DataSource 源码解析
+本文深入解读mybatis-plus的DataSource是如何整合hikari DataSource 和 p6spy DataSource
 
-- mybatis-plus的动态数据源DynamicRoutingDataSource集成了mybatis的SqlSessionFactory和hikari的HikariDataSource
-- mybatis-plus的DynamicDataSourceAutoConfiguration自动装配是实现集成的重要入口
+## 简介
+javax.sql.DataSource是JDBC规范的一个核心接口，作为 DriverManager 机制的替代方案，用于管理数据库连接。
+mybatis的SqlSessionFactory操作数据库就是基于DataSource的实现类，参见```org.apache.ibatis.mapping.Environment```
 
+```java
+public final class Environment {
+   private final DataSource dataSource;
+}
+```
+
+当你使用mybatis作为操作数据库的组件库，需要提供一个DataSource设置到SqlSessionFactory。
+如果选择了hikari线程池，实际上就是将hikari的DataSource实现设置到mybatis的SqlSessionFactory
+
+```java
+@Bean
+public SqlSessionFactoryBean sqlSessionFactory(DataSource dataSource) throws IOException {
+    HikariConfig config = new HikariConfig();
+    DataSource dataSource = HikariDataSource(config);
+    SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
+    sessionFactory.setDataSource(dataSource);
+    return sessionFactory;
+}
+```
+
+现实的业务场景可能需要连接多个数据库，一个现成的解决方案就是引入mybatis-plus的多数据源组件。
+
+mybatis-plus的多数据源DynamicRoutingDataSource也是DataSource的实现，并且集成了各种线程池和p6spy日志功能。
+其原理如图所示：
 ![图片替代文本](DataSource-Simple.drawio.png)
+
+mybatis-plus的DynamicRoutingDataSource，hikari的HikariDataSource，p6spy的P6DataSource如同俄罗斯套娃，通过
+DataSource嵌套的方式，实现了多数据源切换，线程池，日志的功能。
 
 
 ## 创建DataSource
@@ -14,14 +43,12 @@
 DataSource --> DynamicDataSourceProvider -->DataSourceCreator
 ```
 
-### DataSource
+### DynamicRoutingDataSource
+DynamicRoutingDataSource是mybatis-plus的DataSource接口实现
 
 ![图片替代文本](DynamicRoutingDataSource.png)
 
-- 自动装配将DynamicRoutingDataSource类注册为DataSource接口类型的Bean到Spring容器
-- DynamicRoutingDataSource内部方法afterPropertiesSet调用了DynamicDataSourceProvider的loadDataSources方法加载底层数据源
-
-
+自动装配DynamicDataSourceAutoConfiguration将DynamicRoutingDataSource类注册为DataSource接口类型的Bean到Spring容器
 ```java
 public class DynamicDataSourceAutoConfiguration implements InitializingBean {
     @Bean
@@ -32,7 +59,12 @@ public class DynamicDataSourceAutoConfiguration implements InitializingBean {
         return dataSource;
     }
 }
+```
+DynamicRoutingDataSource本身不实现数据库操作，而是通过引入其他DataSource实现。
 
+DynamicRoutingDataSource内部方法afterPropertiesSet调用了DynamicDataSourceProvider的loadDataSources方法加载不同的DataSource实现，
+
+```java
 @Slf4j
 public class DynamicRoutingDataSource extends AbstractRoutingDataSource implements InitializingBean, DisposableBean {
     @Autowired
