@@ -780,6 +780,40 @@
             display: block; /* 移除图片底部默认空白 */
             margin: 0 auto; /* 可选：让图片居中显示 */
         }
+
+     .back-link {
+      /* 基础布局 */
+      display: inline-flex;
+      align-items: center;
+      gap: 6px; /* 箭头与文字间距 */
+      padding: 6px 0; /* 仅上下内边距，不添加左右额外空间 */
+      color: #333;
+      font-size: 14px;
+      text-decoration: none; /* 去掉默认下划线 */
+      transition: color 0.2s;
+      cursor: pointer; /* 鼠标悬停显示手型，提示可点击 */
+      margin-bottom: 10px;
+    }
+
+    /* 左箭头样式 */
+    .back-link::before {
+      content: '';
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-right: 5px solid #333; /* 箭头颜色默认与文字一致 */
+      transition: border-color 0.2s;
+    }
+
+    /* hover效果：颜色加深+下划线 */
+    .back-link:hover {
+      color: #0066cc;
+    }
+
+    .back-link:hover::before {
+      border-right-color: #0066cc; /* 箭头颜色随文字同步变化 */
+    }
     </style>
 </head>
 
@@ -808,8 +842,15 @@
 
 <!-- 主内容区 -->
 <main class="main-content">
+
     <div class="container max-w-4xl">
+
+
         <article class="markdown-content bg-white rounded-lg shadow p-6 md:p-8">
+            <div>
+                <a href="/sprdoc/blog_index.html" class="back-link">返回列表</a>
+            </div>
+
             <h1>java</h1>
         </article>
     </div>
