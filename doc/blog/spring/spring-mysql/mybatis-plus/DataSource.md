@@ -1,5 +1,5 @@
 # mybatis-plus DataSource 源码解析
-本文深入解读mybatis-plus的DataSource是如何整合hikari DataSource 和 p6spy DataSource
+> 本文深入解读mybatis-plus的DataSource是如何整合hikari DataSource 和 p6spy DataSource
 
 ## 简介
 javax.sql.DataSource是JDBC规范的一个核心接口，作为 DriverManager 机制的替代方案，用于管理数据库连接。
