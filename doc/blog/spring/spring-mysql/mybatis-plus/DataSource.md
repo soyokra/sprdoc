@@ -1,4 +1,4 @@
-# mybatis-plus DataSource 源码解析
+# mybatis-plus DataSource 源码分析
 > 本文深入解读mybatis-plus的DataSource是如何对hikari DataSource 和 p6spy DataSource，以及mybatis的SqlSessionFactory进行整合的。
 
 ## 简介

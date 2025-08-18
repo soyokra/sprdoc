@@ -1,4 +1,5 @@
-# Mapper
+# mybatis-plus Mapper 源码分析
+> 本文深入解读mybatis-plus Mapper的实现原理，MapperScan的注册原理
 
 mybatis通常的用法如下：
 
@@ -36,11 +37,17 @@ class Test {
 }
 ```
 
-- 这里的UserMapper实现实际上是一个代理MapperProxy。这种方式简单来说就是，定义接口，调用接口方法的时候，通过代理方式处理接口实现
-- 集成到spring的时候，需要将项目中定义的所有Mapper转换为Proxy，并且注册为Bean。
-- mybatis通过MapperScan注解扫描mapper接口，注册为bean的时候的是FactoryBean模式将实现类转换为MapperProxy代理，
-- 对于mybatis-plus来说，通过注册SqlSessionTemplate这个bean，将MapperProxy代理替换成自己的MybatisMapperProxy代理
+mapper使用JDK动态代理生成的代理对象，集成Spring就是通过MapperScan注解扫描指定目录的mapper文件集合，生成代理对象，并且注册为Bean
 
+这里的UserMapper实现是代理MapperProxy。
+
+集成到Spring的时候，需要将项目中定义的所有Mapper转换为Proxy，并且注册为Bean。
+
+mybatis通过MapperScan注解扫描mapper接口，注册为bean的时候的是FactoryBean模式将实现类转换为MapperProxy代理，
+
+对于mybatis-plus来说，通过注册SqlSessionTemplate这个bean，将MapperProxy代理替换成自己的MybatisMapperProxy代理
+
+mybatis-plus集成mybatis的时候，使用MybatisMapperProxy
 
 ## 主要的调用链路
 

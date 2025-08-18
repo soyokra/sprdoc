@@ -851,171 +851,35 @@
                 <a href="/sprdoc/blog_index.html" class="back-link">返回列表</a>
             </div>
 
-            <h1>Mapper</h1>
-<p>mybatis通常的用法如下：</p>
-<p>定义接口</p>
-<pre><code class="language-java">public interface UserMapper {
-    User selectUser(int id);
-}
+            <h1>mybatis Mapper接口实现原理</h1>
+<p>mybatis通过JDK动态代理把mapper接口面向业务的方法通过转换为操作数据库的方法</p>
+<h2>类关系图</h2>
+<pre><code>MapperRegistry -&gt; MapperProxyFactory -&gt; MapperProxy -&gt; MapperMethod
 </code></pre>
-<p>定义xml文件</p>
-<pre><code class="language-xml">&lt;mapper namespace=&quot;com.example.UserMapper&quot;&gt;
-    &lt;select id=&quot;selectUser&quot; parameterType=&quot;int&quot; resultType=&quot;User&quot;&gt;
-        SELECT * FROM users WHERE id = #{id}
-    &lt;/select&gt;
-&lt;/mapper&gt;
-</code></pre>
-<p>执行</p>
-<pre><code class="language-java">class Test {
-    public static void main(String[] args) {
-        try (SqlSession session = sqlSessionFactory.openSession()) {
-            UserMapper mapper = session.getMapper(UserMapper.class);
-            User user = mapper.selectUser(1);
-            System.out.println(user);
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-</code></pre>
-<p>mapper使用JDK动态代理生成的代理对象，集成Spring就是通过MapperScan注解扫描指定目录的mapper文件集合，生成代理对象，并且注册为Bean</p>
-<p>这里的UserMapper实现是代理MapperProxy。</p>
-<p>集成到Spring的时候，需要将项目中定义的所有Mapper转换为Proxy，并且注册为Bean。</p>
-<p>mybatis通过MapperScan注解扫描mapper接口，注册为bean的时候的是FactoryBean模式将实现类转换为MapperProxy代理，</p>
-<p>对于mybatis-plus来说，通过注册SqlSessionTemplate这个bean，将MapperProxy代理替换成自己的MybatisMapperProxy代理</p>
-<p>mybatis-plus集成mybatis的时候，使用MybatisMapperProxy</p>
-<h2>主要的调用链路</h2>
-<pre><code class="language-text">@MapperScan(&quot;com.soyokra.sprival.dao.*.mapper&quot;)
-=&gt; MapperScan @Import({MapperScannerRegistrar.class})：注册MapperScannerRegistrar
-=&gt; MapperScannerRegistrar.registerBeanDefinitions：设置MapperScannerConfigurer属性的basePackage为com.soyokra.sprival.dao.*.mapper
-=&gt; MapperScannerConfigurer.postProcessBeanDefinitionRegistry
-=&gt; ClassPathMapperScanner.processBeanDefinitions：扫描basePackage生成BeanDefinition，并且设置BeanClass为MapperFactoryBean
-=&gt; Mapper注册为Bean的时候，通过MapperFactoryBean的getObject()转到了SqlSessionTemplate.getMapper()
-=&gt; SqlSessionTemplate调用的是 getConfiguration().getMapper(type, this)。这个SqlSessionTemplate是mybatis-plus注册的Bean，Configuration是mybatis-plus的
-=&gt; 最终通过mybatis-plus的MybatisMapperRegistry执行到MybatisMapperProxyFactory，生成了MybatisMapperProxy代理类作为Mapper接口的实现
-</code></pre>
-<h2>MapperScan</h2>
-<p>@MapperScan("com.soyokra.sprival.dao.<em>.mapper")设置了需要扫描的包basePackages为"com.soyokra.sprival.dao.</em>.mapper"</p>
-<pre><code class="language-java">@MapperScan(&quot;com.soyokra.sprival.dao.*.mapper&quot;)
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-@Documented
-@Import(MapperScannerRegistrar.class)
-@Repeatable(MapperScans.class)
-public @interface MapperScan {
-    String[] value() default {};
-}
-</code></pre>
-<h2>MapperScannerRegistrar</h2>
 <ul>
-<li>MapperScan注解本身注解了@Import({MapperScannerRegistrar.class})</li>
-<li>MapperScannerRegistrar这个类实现了接口ImportBeanDefinitionRegistrar</li>
-<li>通过registerBeanDefinitions方法注册MapperScannerConfigurer这个类的BeanDefinition的时候， 把MapperScan注解设置需要扫描的包设置到了MapperScannerConfigurer这个类的属性basePackages</li>
+<li>MapperRegistry：MapperProxyFactory的注册缓存</li>
+<li>MapperProxyFactory：创建MapperProxy实例</li>
+<li>MapperProxy：动态代理Mapper接口</li>
+<li>MapperMethod：将Mapper面向业务的方法转换为操作数据库的方法</li>
 </ul>
-<pre><code class="language-java">public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
-    void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs,
-                                 BeanDefinitionRegistry registry, String beanName) {
-
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
-
-        builder.addPropertyValue(&quot;basePackage&quot;, StringUtils.collectionToCommaDelimitedString(basePackages));
-
-        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
-
+<h2>JDK动态代理</h2>
+<p>此处为示例代码，用于演示实现原理，方面理解：</p>
+<h3>接口</h3>
+<pre><code>public interface UserMapper {
+    String queryUser(String id);
+}
+</code></pre>
+<h3>代理</h3>
+<pre><code>public class MapperProxy implements InvocationHandler {
+     @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 转为操作mysql的select,update,delete等方法
     }
 }
 </code></pre>
-<h2>MapperScannerConfigurer</h2>
-<ul>
-<li>MapperScannerConfigurer这个类实现了BeanDefinitionRegistryPostProcessor的接口</li>
-<li>在postProcessBeanDefinitionRegistry方法里实例化了ClassPathMapperScanner，通过ClassPathMapperScanner进行类文件扫描和BeanDefinition的注册</li>
-</ul>
-<pre><code class="language-java">public class MapperScannerConfigurer 
-        implements BeanDefinitionRegistryPostProcessor, InitializingBean, ApplicationContextAware, BeanNameAware {
-    @Override
-    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
-        ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
-        scanner.setMapperFactoryBeanClass(this.mapperFactoryBeanClass);
-        scanner.scan(StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
-    }
-}
-</code></pre>
-<h2>ClassPathMapperScanner</h2>
-<p>对basePackages下的文件进行扫描注册成BeanDefinition，并且设置了BeanDefinition的属性beanClass为MapperFactoryBean</p>
-<pre><code class="language-java">public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
-    @Override
-    public Set&lt;BeanDefinitionHolder&gt; doScan(String... basePackages) {
-        Set&lt;BeanDefinitionHolder&gt; beanDefinitions = super.doScan(basePackages);
-        processBeanDefinitions(beanDefinitions);
-        return beanDefinitions;
-    }
-
-    private void processBeanDefinitions(Set&lt;BeanDefinitionHolder&gt; beanDefinitions) {
-        AbstractBeanDefinition definition;
-        BeanDefinitionRegistry registry = getRegistry();
-        for (BeanDefinitionHolder holder : beanDefinitions) {
-            definition = (AbstractBeanDefinition) holder.getBeanDefinition();
-            definition.setBeanClass(this.mapperFactoryBeanClass); // this.mapperFactoryBeanClass =&gt; MapperFactoryBean
-        }
-    }
-}
-</code></pre>
-<h2>MapperFactoryBean</h2>
-<ul>
-<li>MapperFactoryBean实现了FactoryBean接口</li>
-<li>Spring将Mapper注册为Bean的时候，用的是MapperFactoryBean的getObject()，这个方法调用到了SqlSessionTemplate.getMapper()</li>
-</ul>
-<pre><code class="language-java">public class MapperFactoryBean&lt;T&gt; extends SqlSessionDaoSupport implements FactoryBean&lt;T&gt; {
-    @Override
-    public T getObject() throws Exception {
-        return getSqlSession().getMapper(this.mapperInterface);
-    }
-
-    public SqlSession getSqlSession() {
-        return this.sqlSessionTemplate;
-    }
-}
-
-public abstract class SqlSessionDaoSupport extends DaoSupport {
-    public SqlSession getSqlSession() {
-        return this.sqlSessionTemplate;
-    }
-}
-</code></pre>
-<h2>SqlSessionTemplate</h2>
-<p>SqlSessionTemplate调用的是 getConfiguration().getMapper(type, this)。由于这个SqlSessionTemplate是mybatis-plus注册的Bean，Configuration实际上是mybatis-plus
-实现的，最终最终通过mybatis-plus的MybatisMapperRegistry执行到MybatisMapperProxyFactory，生成了MybatisMapperProxy代理类作为Mapper接口的实现</p>
-<pre><code class="language-java">public class SqlSessionTemplate implements SqlSession, DisposableBean {
-    @Override
-    public &lt;T&gt; T getMapper(Class&lt;T&gt; type) {
-        return getConfiguration().getMapper(type, this);
-    }
-
-    @Override
-    public Configuration getConfiguration() {
-        return this.sqlSessionFactory.getConfiguration();
-    }
-}
-</code></pre>
-<h2>MybatisPlusAutoConfiguration</h2>
-<p>mybatis-plus注册SqlSessionFactory 和 SqlSessionTemplate bean</p>
-<pre><code class="language-java">public class MybatisPlusAutoConfiguration implements InitializingBean {
-
-    @Bean
-    @ConditionalOnMissingBean
-    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-        MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
-        factory.setDataSource(dataSource);
-        return factory.getObject();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
-        ExecutorType executorType = this.properties.getExecutorType();
-        return executorType != null ? new SqlSessionTemplate(sqlSessionFactory, executorType) : new SqlSessionTemplate(sqlSessionFactory);
-    }
-}
+<h3>生成动态代理对象</h3>
+<pre><code>UserMapper userMapper = (UserMapper) Proxy.newProxyInstance(UserMapper.class.getClassLoader(), new Class[] { UserMapper.class }, mapperProxy);
+userMapper.queryUser(&quot;10028301010&quot;); // 实际调用 MapperProxy.invoke 方法。
 </code></pre>
         </article>
     </div>
