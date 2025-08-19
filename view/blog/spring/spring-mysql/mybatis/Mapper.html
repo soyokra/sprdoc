@@ -851,19 +851,57 @@
                 <a href="/sprdoc/blog_index.html" class="back-link">返回列表</a>
             </div>
 
-            <h1>mybatis Mapper接口实现原理</h1>
-<p>mybatis通过JDK动态代理把mapper接口面向业务的方法通过转换为操作数据库的方法</p>
-<h2>类关系图</h2>
+            <h1>mybatis Mapper接口源码分析</h1>
+<h2>使用示例</h2>
+<p>mybatis的一个简单使用示例：</p>
+<ol>
+<li>定义XML映射</li>
+</ol>
+<pre><code class="language-xml">&lt;mapper namespace=&quot;com.sprival.UserMapper&quot;&gt;
+    &lt;select id=&quot;selectUser&quot; parameterType=&quot;int&quot; resultType=&quot;User&quot;&gt;
+        SELECT * FROM users WHERE id = #{id}
+    &lt;/select&gt;
+&lt;/mapper&gt;
+</code></pre>
+<ol>
+<li>定义接口</li>
+</ol>
+<pre><code class="language-java">public interface UserMapper {
+    User selectUser(int id);
+}
+</code></pre>
+<ol>
+<li>执行查询</li>
+</ol>
+<pre><code>class Test {
+    public static void main(String[] args) {
+        // 1. 从 XML 配置构建 SqlSessionFactory
+        String resource = &quot;mybatis-config.xml&quot;;
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+
+        // 2. 获取 SqlSession 并执行 SQL
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            UserMapper mapper = session.getMapper(UserMapper.class);
+            User user = mapper.selectUser(1);
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+</code></pre>
+<h2>MapperProxy</h2>
+<p>我们定义的UserMapper是一个接口，那么通过<code>UserMapper mapper = session.getMapper(UserMapper.class)</code>
+获取到的实现是什么呢？
+mybatis负责mapper实例化的类如下：
+- MapperRegistry：MapperProxyFactory的注册缓存
+- MapperProxyFactory：创建MapperProxy实例
+- MapperProxy：动态代理Mapper接口
+- MapperMethod：将Mapper面向业务的方法转换为操作数据库的方法</p>
 <pre><code>MapperRegistry -&gt; MapperProxyFactory -&gt; MapperProxy -&gt; MapperMethod
 </code></pre>
-<ul>
-<li>MapperRegistry：MapperProxyFactory的注册缓存</li>
-<li>MapperProxyFactory：创建MapperProxy实例</li>
-<li>MapperProxy：动态代理Mapper接口</li>
-<li>MapperMethod：将Mapper面向业务的方法转换为操作数据库的方法</li>
-</ul>
-<h2>JDK动态代理</h2>
-<p>此处为示例代码，用于演示实现原理，方面理解：</p>
+<p>mybatis通过JDK动态代理的方式为Mapper接口创建了代理实现MapperProxy，MapperProxy的invoke方法又将具体实现逻辑交由MapperMethod进行处理</p>
+<p>此处为示例代码，用于演示实现原理，方便理解，实际逻辑可以查看源码文件</p>
 <h3>接口</h3>
 <pre><code>public interface UserMapper {
     String queryUser(String id);
@@ -873,13 +911,32 @@
 <pre><code>public class MapperProxy implements InvocationHandler {
      @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        // 转为操作mysql的select,update,delete等方法
+       // 转为mapperMethod处理
+       mapperMethod.execute(sqlSession, args);
     }
 }
 </code></pre>
 <h3>生成动态代理对象</h3>
 <pre><code>UserMapper userMapper = (UserMapper) Proxy.newProxyInstance(UserMapper.class.getClassLoader(), new Class[] { UserMapper.class }, mapperProxy);
 userMapper.queryUser(&quot;10028301010&quot;); // 实际调用 MapperProxy.invoke 方法。
+</code></pre>
+<h2>MapperScan</h2>
+<p>集成到Spring的时候，除了SqlSession bean注册，一个关键点是如何将用户定义的Mapper接口
+mybatis负责mapperScan的类如下：
+- MapperScan
+- MapperScannerRegistrar
+- MapperScannerConfigurer
+- MapperFactoryBean
+- ClassPathMapperScanner</p>
+<p>主要的调用链路如下，MapperScan扫描包目录下的文件，用MapperFactoryBean注册为BeanClass，通过getObject()转到SqlSessionTemplate.getMapper()。
+最终回到MapperRegistry.getMapper()，MapperProxy代理实现</p>
+<pre><code class="language-text">@MapperScan(&quot;com.soyokra.sprival.dao.*.mapper&quot;)
+=&gt; MapperScan @Import({MapperScannerRegistrar.class})：注册MapperScannerRegistrar
+=&gt; MapperScannerRegistrar.registerBeanDefinitions：设置MapperScannerConfigurer属性的basePackage为com.soyokra.sprival.dao.*.mapper
+=&gt; MapperScannerConfigurer.postProcessBeanDefinitionRegistry
+=&gt; ClassPathMapperScanner.processBeanDefinitions：扫描basePackage生成BeanDefinition，并且设置BeanClass为MapperFactoryBean
+=&gt; Mapper注册为Bean的时候，通过MapperFactoryBean的getObject()转到了SqlSessionTemplate.getMapper()
+=&gt; SqlSessionTemplate.getMapper()方法最终调用到MapperRegistry.getMapper()
 </code></pre>
         </article>
     </div>
